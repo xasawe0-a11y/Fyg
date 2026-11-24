@@ -55,6 +55,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px;text-
 @keyframes pulse{0%{box-shadow:0 0 0 0 #C0392Baa}70%{box-shadow:0 0 0 8px #C0392B00}100%{box-shadow:0 0 0 0 #C0392B00}}
 @media (prefers-reduced-motion:reduce){.bdg{animation:none}}
 .mrow{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;margin:4px 0}.mrow p{margin:0}
+#fab{position:fixed;inset-inline-end:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:50%;border:0;background:var(--gold);color:var(--navy);font-size:26px;line-height:1;box-shadow:0 6px 18px #0007;z-index:15;cursor:pointer;animation:pulse 1.6s infinite}
+#fab[hidden]{display:none}#fab:active{transform:scale(.94)}
+#fab span{position:absolute;top:-6px;inset-inline-start:-6px;min-width:24px;height:24px;line-height:24px;border-radius:99px;background:var(--bad);color:#fff;font-size:13px;font-weight:700;padding:0 6px}
+@media (prefers-reduced-motion:reduce){#fab{animation:none}}
 #toast{position:fixed;inset-inline:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:420px;margin:auto;padding:12px 16px;border-radius:12px;color:#fff;font-weight:700;transform:translateY(150%);transition:transform .3s;z-index:20}
 #toast.show{transform:none}
 footer{background:var(--navy);color:#9FB0C8;padding:24px 0;font-size:14px;margin-top:32px}
@@ -69,6 +73,7 @@ footer{background:var(--navy);color:#9FB0C8;padding:24px 0;font-size:14px;margin
 <div id="dbbar" hidden style="background:var(--bad);color:#fff;padding:8px 16px;text-align:center;font-size:14px"></div>
 <main id="app"></main>
 <footer><div class="wrap">SATR | سَطْر — Read, Complete, Earn. <span id="dbs" style="margin-inline-start:8px"></span></div></footer>
+<button id="fab" hidden onclick="fabGo()" aria-label="رسائل جديدة"></button>
 <div id="toast" role="status"></div>
 <script>
 const fmt=n=>Number(n).toLocaleString('ar-SY')+' ل.س';
@@ -90,9 +95,15 @@ const PUB=[['home','الرئيسية'],['login','دخول'],['register','حسا�
 const USR=[['dash','الرئيسية'],['tasks','المهام'],['levels','المستويات'],['refs','الدعوات'],['wallet','المحفظة'],['deposit','شحن'],['withdraw','سحب'],['history','السجل'],['support','الدعم'],['profile','حسابي']];
 function drawNav(){const p=(location.hash||'#home').slice(1),u=me();
  const items=S.admin?[['admin','الإدارة']]:u?USR:PUB;
- const n=u?S.msgs.filter(m=>m.u===u.id&&m.from==='admin'&&!m.read).length:0;
- $('#nav').innerHTML=items.map(([k,l])=>`<a href="#${k}" class="${p===k?'on':''}">${l}${k==='support'&&n?`<span class="bdg" aria-label="رسائل جديدة">${n}</span>`:''}</a>`).join('')+(u||S.admin?'<a id="out">خروج</a>':'<a href="#admin-login">الإدارة</a>');
- const o=$('#out');if(o)o.onclick=()=>{S.user=null;S.admin=false;go('home')}}
+ const n=S.admin?S.msgs.filter(m=>m.from==='user'&&!m.aread).length:u?S.msgs.filter(m=>m.u===u.id&&m.from==='admin'&&!m.read).length:0;
+ $('#nav').innerHTML=items.map(([k,l])=>`<a href="#${k}" class="${p===k?'on':''}">${l}${(k==='support'||k==='admin')&&n?`<span class="bdg" aria-label="رسائل جديدة">${n}</span>`:''}</a>`).join('')+(u||S.admin?'<a id="out">خروج</a>':'<a href="#admin-login">الإدارة</a>');
+ const o=$('#out');if(o)o.onclick=()=>{S.user=null;S.admin=false;go('home')};
+ const f=$('#fab');f.hidden=!(n>0&&!(u&&p==='support'));f.innerHTML='💬<span>'+n+'</span>';
+ document.title=(n?'('+n+') ':'')+'SATR | سَطْر'}
+function fabGo(){if(!S.admin)return go('support');
+ S.msgs.forEach(m=>{if(m.from==='user')m.aread=true});save();drawNav();
+ const sc=()=>{const e=$('#msgs');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})};
+ if(location.hash!=='#admin'){go('admin');setTimeout(sc,250)}else sc()}
 function render(){
  try{S.user?localStorage.setItem('satr_u',S.user):localStorage.removeItem('satr_u')}catch(e){}
  const p=(location.hash||'#home').slice(1),u=me();
@@ -165,8 +176,8 @@ history(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><h2>سج�
 support(){const u=me(),th=S.msgs.filter(m=>m.u===u.id),fresh=new Set(th.filter(m=>m.from==='admin'&&!m.read).map(m=>m.id));
 if(fresh.size){th.forEach(m=>{if(fresh.has(m.id))m.read=true});save();drawNav()}
 $('#app').innerHTML=`<div class="wrap"><section><div class="card form" style="max-width:520px"><h2>مراسلة الدعم</h2>
-<div style="max-height:320px;overflow-y:auto;margin-bottom:12px">${th.map(m=>`<div style="margin:8px 0"><span class="tag ${m.from==='admin'?'t-ok':'t-w'}">${m.from==='admin'?'الدعم':'أنت'} · ${m.d}</span>${fresh.has(m.id)?' <span class="tag t-bad">جديد</span>':''}<p style="margin:2px 0">${esc(m.text)}</p></div>`).join('')||'<p class="muted">لا رسائل بعد.</p>'}</div>
-<label>الموضوع</label><select id="mt"><option>شحن</option><option>سحب</option><option>استفسار</option></select>
+<div style="max-height:320px;overflow-y:auto;margin-bottom:12px">${th.map(m=>`<div class="mrow" style="margin:8px 0"><div><span class="tag ${m.from==='admin'?'t-ok':'t-w'}">${m.from==='admin'?'الدعم':'أنت'} · ${m.d}</span>${fresh.has(m.id)?' <span class="tag t-bad">جديد</span>':''}<p style="margin:2px 0">${esc(m.text)}</p></div><button class="btn bad sm" onclick="delMsg('${m.id}')">${window.DM===m.id?'تأكيد':'حذف'}</button></div>`).join('')||'<p class="muted">لا رسائل بعد.</p>'}</div>
+${th.length?`<p><button class="btn alt sm" onclick="delThread()">${window.DT2==='me'?'تأكيد حذف المحادثة':'حذف المحادثة كاملة'}</button></p>`:''}<label>الموضوع</label><select id="mt"><option>شحن</option><option>سحب</option><option>استفسار</option></select>
 <label>رسالتك</label><textarea id="mx" rows="3" maxlength="500"></textarea>
 <p><button class="btn" style="width:100%" onclick="sendMsg()">إرسال</button></p></div></section></div>`},
 profile(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><div class="card form"><h2>حسابي</h2><p>رقم الحساب: <b>${u.id}</b></p><p>الهاتف: <b>${u.phone}</b></p><p>المستوى: <b>${plan(u).name}</b></p></div></section></div>`},
@@ -182,7 +193,7 @@ admin(){const q=(window.AQ||'').trim(),et=TASKS.find(t=>t.id===window.ET)||{};
  ${wds.map(w=>`<tr><td>${w.id}</td><td>${esc(w.name)}</td><td>${w.phone}</td><td>${fmt(w.amt)}</td><td>${esc(w.owner)}<br><span style="user-select:all" dir="ltr">${esc(w.code)}</span> <button class="btn alt sm" onclick="copyC('${w.id}')">نسخ</button></td>
  <td><span class="tag ${{review:'t-w',accepted:'t-ok',rejected:'t-bad',paid:'t-ok'}[w.st]}">${{review:'قيد المراجعة',accepted:'مقبول',rejected:'مرفوض',paid:'تم الدفع'}[w.st]}</span>${w.note?'<br><small>'+w.note+'</small>':''}</td>
  <td>${w.st==='review'?`<button class="btn ok sm" onclick="wst('${w.id}','accepted')">قبول</button> <button class="btn bad sm" onclick="wst('${w.id}','rejected')">رفض</button>`:w.st==='accepted'?`<button class="btn sm" onclick="wst('${w.id}','paid')">تم الدفع</button>`:''}</td></tr>`).join('')}</table></div>
- <h2 style="margin-top:28px">رسائل الدعم</h2>${Object.entries(S.msgs.reduce((g,m)=>((g[m.u]=g[m.u]||[]).push(m),g),{})).sort((a,b)=>(b[1].at(-1).from==='user')-(a[1].at(-1).from==='user')).map(([id,ms])=>`<div class="card" style="margin-bottom:10px"><b>${esc(ms.find(m=>m.name)?.name||id)}</b> <span class="muted">${id}</span> ${ms.at(-1).from==='user'?'<span class="tag t-bad">بانتظار الرد</span>':'<span class="tag t-ok">تم الرد</span>'} <button class="btn bad sm" style="float:left" onclick="delThread('${id}')">${window.DT2===id?'تأكيد حذف المحادثة':'حذف المحادثة'}</button>
+ <h2 id="msgs" style="margin-top:28px">رسائل الدعم</h2>${Object.entries(S.msgs.reduce((g,m)=>((g[m.u]=g[m.u]||[]).push(m),g),{})).sort((a,b)=>(b[1].at(-1).from==='user')-(a[1].at(-1).from==='user')).map(([id,ms])=>`<div class="card" style="margin-bottom:10px"><b>${esc(ms.find(m=>m.name)?.name||id)}</b> <span class="muted">${id}</span> ${ms.at(-1).from==='user'?'<span class="tag t-bad">بانتظار الرد</span>':'<span class="tag t-ok">تم الرد</span>'} <button class="btn bad sm" style="float:left" onclick="delThread('${id}')">${window.DT2===id?'تأكيد حذف المحادثة':'حذف المحادثة'}</button>
  <div style="max-height:260px;overflow-y:auto">${ms.map(m=>`<div class="mrow"><p><span class="tag ${m.from==='admin'?'t-ok':'t-w'}">${m.from==='admin'?'الإدارة':esc(m.topic)}</span> ${esc(m.text)}${m.from==='admin'?(m.read?' <small class="muted">✓ قُرئت</small>':''):''}</p><button class="btn bad sm" onclick="delMsg('${m.id}')">${window.DM===m.id?'تأكيد':'حذف'}</button></div>`).join('')}</div>
  <div style="display:flex;gap:8px"><input id="r_${id}" placeholder="اكتب الرد"><button class="btn sm" onclick="replyMsg('${id}')">رد</button></div></div>`).join('')||'<div class="card muted">لا رسائل</div>'}
  <h2 style="margin-top:28px">إدارة المهام والنصوص</h2><div class="card"><label>عنوان المهمة</label><input id="tt" value="${esc(et.t||'')}"><label>تظهر من المستوى</label><select id="tl">${PLANS.map(p=>`<option value="${p.id}" ${p.id===(et.lv||1)?'selected':''}>${p.name} وما فوقه</option>`).join('')}</select><label>النص المراد قراءته (كل سطر في سطر جديد)</label><textarea id="tb" rows="6">${esc((et.body||[]).join('\n'))}</textarea><p><button class="btn" onclick="saveT()">${et.id?'حفظ التعديل':'إضافة المهمة'}</button> ${et.id?'<button class="btn alt sm" onclick="window.ET=null;V.admin()">إلغاء</button>':''}</p></div>
@@ -244,9 +255,14 @@ async function sendMsg(t){const u=me(),x=$('#mx'),tx=x.value.trim();if(!tx)retur
  x.value='';toast('أُرسلت رسالتك للدعم');if(location.hash==='#support')V.support()}
 async function replyMsg(id){const x=$('#r_'+id),tx=x.value.trim();if(!tx)return;
  await pull();
+ S.msgs.forEach(m=>{if(m.u===id&&m.from==='user')m.aread=true});
  S.msgs.push({id:'M'+Date.now(),u:id,name:'',from:'admin',topic:'',text:tx,d:today()});toast('أُرسل الرد');V.admin()}
-async function delMsg(mid){if(window.DM!==mid){window.DM=mid;toast('اضغط «تأكيد» لحذف الرسالة',false);V.admin();return}window.DM=null;await pull();S.msgs=S.msgs.filter(m=>m.id!==mid);toast('تم حذف الرسالة');V.admin()}
-async function delThread(uid){if(window.DT2!==uid){window.DT2=uid;toast('اضغط مرة ثانية لحذف المحادثة كاملة',false);V.admin();return}window.DT2=null;await pull();S.msgs=S.msgs.filter(m=>m.u!==uid);toast('تم حذف المحادثة');V.admin()}
+async function delMsg(mid){if(window.DM!==mid){window.DM=mid;toast('اضغط «تأكيد» لحذف الرسالة',false);S.admin?V.admin():V.support();return}window.DM=null;await pull();
+ const m=S.msgs.find(x=>x.id===mid);if(m&&(S.admin||m.u===S.user))S.msgs=S.msgs.filter(x=>x.id!==mid);
+ toast('تم حذف الرسالة من الطرفين');drawNav();S.admin?V.admin():V.support()}
+async function delThread(uid){uid=S.admin?uid:'me';if(window.DT2!==uid){window.DT2=uid;toast('اضغط مرة ثانية لحذف المحادثة كاملة',false);S.admin?V.admin():V.support();return}window.DT2=null;await pull();
+ const id=S.admin?uid:S.user;S.msgs=S.msgs.filter(m=>m.u!==id);
+ toast('تم حذف المحادثة من الطرفين');drawNav();S.admin?V.admin():V.support()}
 addEventListener('hashchange',render);
 /* ===== حفظ البيانات في JSONBin (للتجربة فقط) ===== */
 /* بيانات JSONBin للتجربة فقط: لا ترفع هذا الملف في مستودع عام ولا تشاركه */
