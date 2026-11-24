@@ -72,7 +72,7 @@ const PLANS=[{id:1,name:'المستوى الأول',price:50000,dep:5000,tasks:1
 const TASKS=[
  {id:1,t:'الحرف العربي عبر القرون',lv:1},{id:2,t:'فن الخط الكوفي',lv:2},{id:3,t:'رحلة الكتاب المطبوع',lv:3}
 ].map(x=>({...x,body:['اقرأ هذه الأسطر الخمسة بتمعّن، ثم اضغط إتمام المهمة.','تتغير النصوص يومياً بحسب ما تضيفه الإدارة.','كل مهمة مموّلة من رعاة أو إعلانات داخل النص.','تُحتسب المهمة مرة واحدة فقط في اليوم نفسه.','المكافأة صغيرة وثابتة وتظهر قبل البدء.']}));
-const S={user:null,admin:false,seq:10002,settings:{tg:'satr_support',sc:'DEMO-SHAMCASH-CODE',min:10000,day:'الخميس',ap:'SATR@2026'},
+const S={user:null,admin:false,seq:10002,msgs:[],settings:{tg:'satr_support',sc:'DEMO-SHAMCASH-CODE',min:10000,day:'الخميس',ap:'SATR@2026'},
  users:[{id:'SA10001',name:'سارة',pw:'demo1234',phone:'0991111111',plan:2,status:'active',bal:1200,hold:0,done:[],code:'SATR10001',inv:[]},{id:'SA10002',name:'ياسر',pw:'demo1234',phone:'0992222222',plan:1,status:'pending',bal:0,hold:0,done:[],code:'SATR10002',inv:[]}],
  wd:[{id:'W1001',u:'SA10001',name:'سارة',phone:'0991111111',amt:10000,owner:'سارة أ.',code:'SC-48213',date:'2026-11-03',st:'review',note:''}],
  log:[{u:'SA10001',d:'2026-11-02',k:'إيداع (تجريبي)',a:1200}]};
@@ -83,14 +83,14 @@ const plan=u=>PLANS.find(p=>p.id===u.plan);
 const today=()=>new Date().toISOString().slice(0,10);
 function go(p){location.hash=p;}
 const PUB=[['home','الرئيسية'],['login','دخول'],['register','حساب جديد']];
-const USR=[['dash','الرئيسية'],['tasks','المهام'],['levels','المستويات'],['refs','الدعوات'],['wallet','المحفظة'],['deposit','شحن'],['withdraw','سحب'],['history','السجل'],['profile','حسابي']];
+const USR=[['dash','الرئيسية'],['tasks','المهام'],['levels','المستويات'],['refs','الدعوات'],['wallet','المحفظة'],['deposit','شحن'],['withdraw','سحب'],['history','السجل'],['support','الدعم'],['profile','حسابي']];
 function render(){
  try{S.user?localStorage.setItem('satr_u',S.user):localStorage.removeItem('satr_u')}catch(e){}
  const p=(location.hash||'#home').slice(1),u=me();
  const items=S.admin?[['admin','الإدارة']]:u?USR:PUB;
  $('#nav').innerHTML=items.map(([k,l])=>`<a href="#${k}" class="${p===k?'on':''}">${l}</a>`).join('')+(u||S.admin?'<a id="out">خروج</a>':'<a href="#admin-login">الإدارة</a>');
  const o=$('#out');if(o)o.onclick=()=>{S.user=null;S.admin=false;go('home')};
- const gated=['dash','tasks','levels','refs','wallet','deposit','withdraw','history','profile'];
+ const gated=['dash','tasks','levels','refs','wallet','deposit','withdraw','history','support','profile'];
  if(gated.includes(p)&&!u){return go('login')}
  const need=['tasks','wallet','withdraw'];
  if(u&&u.status!=='active'&&need.includes(p)){$('#app').innerHTML=`<div class="wrap"><div class="card form"><h2>حسابك قيد المراجعة</h2><p>لا يمكن استخدام المهام أو المحفظة قبل موافقة الإدارة.</p></div></div>`;return}
@@ -144,6 +144,9 @@ deposit(){const u=me(),sc=S.settings.sc,d=PLANS;$('#app').innerHTML=`<div class=
 ${sc?`<div class="muted">كود شام كاش للإيداع</div><div class="stat" dir="ltr" style="text-align:right;user-select:all">${esc(sc)}</div><p><button class="btn" style="width:100%" data-c="${esc(sc)}" onclick="cp(this.dataset.c,'تم نسخ كود شام كاش')">نسخ الكود</button></p>`:`<div class="note">لم تحدد الإدارة كود الإيداع بعد. تواصل مع فريق الدعم للحصول عليه.</div>`}
 <div class="note"><b>تعليمات الشحن</b><br>عند الشحن علّق باسم حسابك كما هو مسجّل بالمنصة (<b>${esc(u.name)}</b>) من أي حساب شام كاش، وحوّل المبلغ الذي تريده لتفعيل المستوى. وبعد التحويل راسل الدعم ليُفعَّل مستواك.</div>
 <div class="scroll"><table>${d.map(p=>`<tr><td>${esc(p.name)}</td><td><b>${fmt(p.dep)}</b></td></tr>`).join('')}</table></div>
+<label>أرسل إشعار التحويل للدعم مباشرة</label><textarea id="mx" rows="2" maxlength="500" placeholder="مثال: حوّلت 36,000 من حساب باسم ..."></textarea>
+<p><button class="btn" style="width:100%" onclick="sendMsg('شحن')">إرسال للدعم</button></p>
+<p class="muted">ستجد رد الدعم في صفحة «الدعم».</p>
 <p style="margin-top:16px"><a class="btn ok" style="display:block;text-align:center;text-decoration:none" href="${tgl()}" target="_blank" rel="noopener">استفسار؟ راسلنا على تلغرام</a></p></div></section></div>`},
 withdraw(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><form class="card form" onsubmit="return wdr(event)"><h2>سحب الأرباح</h2>
 <p class="muted">المتاح: <b>${fmt(u.bal)}</b> · الحد الأدنى: ${fmt(S.settings.min)} · السحب كل ${S.settings.day}</p>
@@ -152,6 +155,12 @@ withdraw(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><form cl
 <div class="warn">⚠️ يرجى التأكد من كود شام كاش جيداً قبل إرسال طلب السحب، والتأكد من أن الكود يعود إلى الحساب الصحيح.</div>
 <p><button class="btn" style="width:100%">طلب سحب الأرباح</button></p></form></section></div>`},
 history(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><h2>سجل العمليات</h2><div class="card scroll"><table><tr><th>التاريخ</th><th>العملية</th><th>المبلغ</th></tr>${S.log.filter(l=>l.u===u.id).reverse().map(l=>`<tr><td>${l.d}</td><td>${l.k}</td><td style="color:${l.a<0?'var(--bad)':'var(--ok)'}">${fmt(l.a)}</td></tr>`).join('')||'<tr><td colspan=3>لا عمليات بعد. أنجز مهمتك الأولى.</td></tr>'}</table></div></section></div>`},
+support(){const u=me(),th=S.msgs.filter(m=>m.u===u.id);
+$('#app').innerHTML=`<div class="wrap"><section><div class="card form" style="max-width:520px"><h2>مراسلة الدعم</h2>
+<div style="max-height:320px;overflow-y:auto;margin-bottom:12px">${th.map(m=>`<div style="margin:8px 0"><span class="tag ${m.from==='admin'?'t-ok':'t-w'}">${m.from==='admin'?'الدعم':'أنت'} · ${m.d}</span><p style="margin:2px 0">${esc(m.text)}</p></div>`).join('')||'<p class="muted">لا رسائل بعد.</p>'}</div>
+<label>الموضوع</label><select id="mt"><option>شحن</option><option>سحب</option><option>استفسار</option></select>
+<label>رسالتك</label><textarea id="mx" rows="3" maxlength="500"></textarea>
+<p><button class="btn" style="width:100%" onclick="sendMsg()">إرسال</button></p></div></section></div>`},
 profile(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><div class="card form"><h2>حسابي</h2><p>رقم الحساب: <b>${u.id}</b></p><p>الهاتف: <b>${u.phone}</b></p><p>المستوى: <b>${plan(u).name}</b></p></div></section></div>`},
 admin(){const q=(window.AQ||'').trim(),et=TASKS.find(t=>t.id===window.ET)||{};
  const wds=S.wd.filter(w=>!q||[w.name,w.phone,w.id].some(x=>x.includes(q)));
@@ -165,6 +174,9 @@ admin(){const q=(window.AQ||'').trim(),et=TASKS.find(t=>t.id===window.ET)||{};
  ${wds.map(w=>`<tr><td>${w.id}</td><td>${esc(w.name)}</td><td>${w.phone}</td><td>${fmt(w.amt)}</td><td>${esc(w.owner)}<br><span style="user-select:all" dir="ltr">${esc(w.code)}</span> <button class="btn alt sm" onclick="copyC('${w.id}')">نسخ</button></td>
  <td><span class="tag ${{review:'t-w',accepted:'t-ok',rejected:'t-bad',paid:'t-ok'}[w.st]}">${{review:'قيد المراجعة',accepted:'مقبول',rejected:'مرفوض',paid:'تم الدفع'}[w.st]}</span>${w.note?'<br><small>'+w.note+'</small>':''}</td>
  <td>${w.st==='review'?`<button class="btn ok sm" onclick="wst('${w.id}','accepted')">قبول</button> <button class="btn bad sm" onclick="wst('${w.id}','rejected')">رفض</button>`:w.st==='accepted'?`<button class="btn sm" onclick="wst('${w.id}','paid')">تم الدفع</button>`:''}</td></tr>`).join('')}</table></div>
+ <h2 style="margin-top:28px">رسائل الدعم</h2>${Object.entries(S.msgs.reduce((g,m)=>((g[m.u]=g[m.u]||[]).push(m),g),{})).sort((a,b)=>(b[1].at(-1).from==='user')-(a[1].at(-1).from==='user')).map(([id,ms])=>`<div class="card" style="margin-bottom:10px"><b>${esc(ms.find(m=>m.name)?.name||id)}</b> <span class="muted">${id}</span> ${ms.at(-1).from==='user'?'<span class="tag t-bad">بانتظار الرد</span>':'<span class="tag t-ok">تم الرد</span>'}
+ ${ms.slice(-6).map(m=>`<p style="margin:4px 0"><span class="tag ${m.from==='admin'?'t-ok':'t-w'}">${m.from==='admin'?'الإدارة':esc(m.topic)}</span> ${esc(m.text)}</p>`).join('')}
+ <div style="display:flex;gap:8px"><input id="r_${id}" placeholder="اكتب الرد"><button class="btn sm" onclick="replyMsg('${id}')">رد</button></div></div>`).join('')||'<div class="card muted">لا رسائل</div>'}
  <h2 style="margin-top:28px">إدارة المهام والنصوص</h2><div class="card"><label>عنوان المهمة</label><input id="tt" value="${esc(et.t||'')}"><label>تظهر من المستوى</label><select id="tl">${PLANS.map(p=>`<option value="${p.id}" ${p.id===(et.lv||1)?'selected':''}>${p.name} وما فوقه</option>`).join('')}</select><label>النص المراد قراءته (كل سطر في سطر جديد)</label><textarea id="tb" rows="6">${esc((et.body||[]).join('\n'))}</textarea><p><button class="btn" onclick="saveT()">${et.id?'حفظ التعديل':'إضافة المهمة'}</button> ${et.id?'<button class="btn alt sm" onclick="window.ET=null;V.admin()">إلغاء</button>':''}</p></div>
  <div class="card scroll" style="margin-top:12px"><table><tr><th>العنوان</th><th>المستوى</th><th></th></tr>${TASKS.map(t=>`<tr><td>${esc(t.t)}</td><td>${PLANS.find(p=>p.id===t.lv).name}</td><td><button class="btn sm" onclick="editT(${t.id})">تعديل</button> <button class="btn bad sm" onclick="delT(${t.id})">${window.DT===t.id?'تأكيد الحذف':'حذف'}</button></td></tr>`).join('')||'<tr><td colspan=3>لا مهام</td></tr>'}</table></div>
  <h2 style="margin-top:28px">الإعدادات</h2><div class="card"><label>معرّف تلغرام للدعم (بدون @)</label><input id="sw" value="${S.settings.tg}" dir="ltr"><label>كود شام كاش للإيداع (اختياري)</label><input id="ssc" value="${esc(S.settings.sc||'')}" dir="ltr"><label>الحد الأدنى للسحب</label><input id="sm" type="number" value="${S.settings.min}"><label>كلمة مرور الإدارة الجديدة (اتركها فارغة بلا تغيير)</label><input id="np" type="password" minlength="8">
@@ -211,19 +223,24 @@ function wst(id,st){const w=S.wd.find(x=>x.id===id),u=S.users.find(x=>x.id===w.u
  w.st=st;toast('تم تحديث الطلب');V.admin()}
 function adminLogin(e){e.preventDefault();if($('#ap').value!==S.settings.ap)return toast('كلمة المرور غير صحيحة',false),false;S.admin=true;go('admin');return false}
 function setPlan(id,p){const u=S.users.find(x=>x.id===id);u.plan=+p;toast('تم تغيير المستوى إلى '+plan(u).name)}
-function delU(id){if(window.DC!==id){window.DC=id;toast('اضغط «تأكيد الحذف» مرة ثانية لحذف '+id,false);V.admin();return}window.DC=null;S.users=S.users.filter(x=>x.id!==id);S.wd=S.wd.filter(w=>w.u!==id||w.st==='paid');S.log=S.log.filter(l=>l.u!==id);S.users.forEach(x=>{x.inv=x.inv.filter(i=>i.id!==id)});toast('تم حذف الحساب');V.admin()}
+function delU(id){if(window.DC!==id){window.DC=id;toast('اضغط «تأكيد الحذف» مرة ثانية لحذف '+id,false);V.admin();return}window.DC=null;S.users=S.users.filter(x=>x.id!==id);S.wd=S.wd.filter(w=>w.u!==id||w.st==='paid');S.log=S.log.filter(l=>l.u!==id);S.msgs=S.msgs.filter(m=>m.u!==id);S.users.forEach(x=>{x.inv=x.inv.filter(i=>i.id!==id)});toast('تم حذف الحساب');V.admin()}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function saveT(){const t=$('#tt').value.trim(),b=$('#tb').value.split('\n').map(x=>x.trim()).filter(Boolean);if(!t||!b.length)return toast('أدخل العنوان والنص',false);const lv=+$('#tl').value,ex=TASKS.find(x=>x.id===window.ET);if(ex){ex.t=t;ex.lv=lv;ex.body=b}else TASKS.push({id:Date.now(),t,lv,body:b});window.ET=null;toast('تم حفظ المهمة');V.admin()}
 function copyC(id){const w=S.wd.find(x=>x.id===id),t=w.code,ok=()=>toast('تم نسخ الكود '+t);const fb=()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();let r=false;try{r=document.execCommand('copy')}catch(e){}a.remove();r?ok():toast('انسخ الكود يدوياً: '+t,false)};if(navigator.clipboard)navigator.clipboard.writeText(t).then(ok,fb);else fb()}
 function resetPw(id){const u=S.users.find(x=>x.id===id),p='S'+Math.random().toString(36).slice(2,9);u.pw=p;window.RP={id,p};save();V.admin()}
 function editT(id){window.ET=id;V.admin();$('#tt').scrollIntoView({block:'center'})}
 function delT(id){if(window.DT!==id){window.DT=id;toast('اضغط «تأكيد الحذف» مرة ثانية',false);V.admin();return}window.DT=null;const i=TASKS.findIndex(t=>t.id===id);if(i>-1)TASKS.splice(i,1);toast('تم حذف المهمة');V.admin()}
+function sendMsg(t){const u=me(),x=$('#mx'),tx=x.value.trim();if(!tx)return toast('اكتب رسالتك',false);
+ S.msgs.push({id:'M'+Date.now(),u:u.id,name:u.name,from:'user',topic:t||$('#mt').value,text:tx,d:today()});
+ x.value='';toast('أُرسلت رسالتك للدعم');if(location.hash==='#support')V.support()}
+function replyMsg(id){const x=$('#r_'+id),tx=x.value.trim();if(!tx)return;
+ S.msgs.push({id:'M'+Date.now(),u:id,name:'',from:'admin',topic:'',text:tx,d:today()});toast('أُرسل الرد');V.admin()}
 addEventListener('hashchange',render);
 /* ===== حفظ البيانات في JSONBin (للتجربة فقط) ===== */
 /* بيانات JSONBin للتجربة فقط: لا ترفع هذا الملف في مستودع عام ولا تشاركه */
 const CFG={bin:'6af38d23ffd5d16053b7d22e',key:'$2a$10$UrOOuFAKOgrOtxgAXuhnYOnedwLGXP88RwiB.tFL1j6HOd5Bwe2Wm'};
 let LAST='',TM=null,ONLINE=false;
-const snap=()=>JSON.stringify({users:S.users,wd:S.wd,log:S.log,settings:S.settings,seq:S.seq,tasks:TASKS});
+const snap=()=>JSON.stringify({users:S.users,wd:S.wd,log:S.log,msgs:S.msgs,settings:S.settings,seq:S.seq,tasks:TASKS});
 let HDR='X-Master-Key';
 async function jb(m,b){for(const h of [HDR,HDR==='X-Master-Key'?'X-Access-Key':'X-Master-Key']){
  const r=await fetch('https://api.jsonbin.io/v3/b/'+CFG.bin+(m==='GET'?'/latest':''),{method:m,headers:{'Content-Type':'application/json','X-Bin-Meta':'false',[h]:CFG.key},body:b});
@@ -231,369 +248,13 @@ async function jb(m,b){for(const h of [HDR,HDR==='X-Master-Key'?'X-Access-Key':'
 function save(){if(!ONLINE)return;clearTimeout(TM);TM=setTimeout(async()=>{const x=snap();if(x===LAST)return;try{await jb('PUT',x);LAST=x}catch(e){toast('تعذّر حفظ البيانات في JSONBin',false)}},1200)}
 async function boot(){
  if(CFG.bin&&CFG.key){try{const d=await jb('GET');
-  if(d&&Array.isArray(d.users)){S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}}
+  if(d&&Array.isArray(d.users)){S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];S.msgs=d.msgs||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}}
   else if(!d||Object.keys(d).every(k=>k==='init'))await jb('PUT',snap());else throw new Error('الـ Bin يحتوي بيانات أخرى');
   LAST=snap();ONLINE=true;$('#dbs').textContent='● متصل بقاعدة البيانات';
   try{const u=localStorage.getItem('satr_u');if(u&&S.users.some(x=>x.id===u))S.user=u}catch(e){}}
   catch(e){const b=$('#dbbar');b.hidden=false;b.textContent='لا يوجد اتصال بقاعدة البيانات ولن تُحفظ بياناتك. السبب: '+e.message;$('#dbs').textContent='○ غير متصل'}}
  render()}
 boot();
-</script>
-</body>
-</html>
-ذّر حفظ الإعدادات',false)}return false}
-async function boot(){
- if(CFG.bin&&CFG.key){try{const d=await jb('GET');
-  if(d&&Array.isArray(d.users)){S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}}
-  else await jb('PUT',snap());
-  LAST=snap();ONLINE=true}catch(e){toast('تعذّر الاتصال بـ JSONBin، تحقق من الإعدادات',false)}}
- render()}
-boot();
-</script>
-</body>
-</html>
-Context('2d');
-  var confettiParticles = [];
-  var confettiRAF = null;
-  var dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-  function resizeCanvas() {
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-
-  function cssVar(name) {
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  }
-
-  function fireConfetti() {
-    var colors = [cssVar('--accent'), cssVar('--signal'), '#F3EFE5', cssVar('--danger')];
-    var originX = window.innerWidth / 2;
-    var originY = Math.min(window.innerHeight * 0.32, 260);
-    var count = 90;
-
-    for (var i = 0; i < count; i++) {
-      var angle = Math.random() * Math.PI * 2;
-      var speed = 3 + Math.random() * 6;
-      confettiParticles.push({
-        x: originX,
-        y: originY,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 3,
-        size: 5 + Math.random() * 5,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        rotation: Math.random() * Math.PI,
-        rotSpeed: (Math.random() - 0.5) * 0.3,
-        life: 0,
-        maxLife: 70 + Math.random() * 40,
-        shape: Math.random() > 0.5 ? 'rect' : 'circle'
-      });
-    }
-
-    if (!confettiRAF) { animateConfetti(); }
-  }
-
-  function animateConfetti() {
-    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    var stillAlive = false;
-
-    for (var i = confettiParticles.length - 1; i >= 0; i--) {
-      var p = confettiParticles[i];
-      p.life++;
-      if (p.life > p.maxLife) { confettiParticles.splice(i, 1); continue; }
-      stillAlive = true;
-
-      p.vy += 0.14;
-      p.vx *= 0.99;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.rotation += p.rotSpeed;
-
-      var fade = 1 - p.life / p.maxLife;
-      ctx.save();
-      ctx.globalAlpha = Math.max(fade, 0);
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
-      ctx.fillStyle = p.color;
-      if (p.shape === 'rect') {
-        ctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.66);
-      } else {
-        ctx.beginPath();
-        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    if (stillAlive) {
-      confettiRAF = requestAnimationFrame(animateConfetti);
-    } else {
-      confettiRAF = null;
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    }
-  }
-
-  function fireBurstRings() {
-    for (var i = 0; i < 3; i++) {
-      (function (delay) {
-        setTimeout(function () {
-          var ring = document.createElement('div');
-          ring.className = 'burst-ring';
-          radarStage.appendChild(ring);
-          requestAnimationFrame(function () { ring.classList.add('go'); });
-          setTimeout(function () { ring.remove(); }, 1000);
-        }, delay);
-      })(i * 160);
-    }
-  }
-
-  function render() {
-    chipList.innerHTML = '';
-    if (names.length === 0) {
-      emptyNote.style.display = 'block';
-    } else {
-      emptyNote.style.display = 'none';
-      names.forEach(function (n, i) {
-        var li = document.createElement('li');
-        li.className = 'chip';
-        var span = document.createElement('span');
-        span.textContent = n;
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.setAttribute('aria-label', 'حذف ' + n);
-        btn.textContent = '×';
-        btn.addEventListener('click', function () {
-          names.splice(i, 1);
-          safeSet(STORE_NAMES, names);
-          render();
-        });
-        li.appendChild(span);
-        li.appendChild(btn);
-        chipList.appendChild(li);
-      });
-    }
-    participantCount.textContent = names.length;
-    drawBtn.disabled = names.length === 0 || isDrawing;
-
-    if (history.length === 0) {
-      historyCard.style.display = 'none';
-    } else {
-      historyCard.style.display = 'block';
-      historyList.innerHTML = '';
-      history.slice().reverse().forEach(function (h) {
-        var li = document.createElement('li');
-        li.className = 'history-item';
-        var nameSpan = document.createElement('span');
-        nameSpan.className = 'name';
-        nameSpan.textContent = h.name;
-        var timeSpan = document.createElement('span');
-        timeSpan.className = 'time';
-        timeSpan.textContent = h.time;
-        li.appendChild(nameSpan);
-        li.appendChild(timeSpan);
-        historyList.appendChild(li);
-      });
-    }
-  }
-
-  function addName(raw) {
-    var n = raw.trim();
-    if (!n) return;
-    names.push(n);
-  }
-
-  addBtn.addEventListener('click', function () {
-    addName(nameInput.value);
-    nameInput.value = '';
-    safeSet(STORE_NAMES, names);
-    render();
-    nameInput.focus();
-  });
-  nameInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { addBtn.click(); }
-  });
-
-  bulkToggle.addEventListener('click', function () {
-    var showing = bulkArea.style.display !== 'none';
-    bulkArea.style.display = showing ? 'none' : 'block';
-    bulkToggle.textContent = showing ? 'لصق عدة أسماء دفعة واحدة' : 'إخفاء';
-  });
-
-  bulkAddBtn.addEventListener('click', function () {
-    var lines = bulkInput.value.split('\n');
-    lines.forEach(addName);
-    bulkInput.value = '';
-    safeSet(STORE_NAMES, names);
-    render();
-  });
-
-  function armConfirm(btn, idleLabel, confirmLabel, onConfirm) {
-    var armed = false;
-    var timer = null;
-    btn.textContent = idleLabel;
-    btn.addEventListener('click', function () {
-      if (!armed) {
-        armed = true;
-        btn.textContent = confirmLabel;
-        btn.classList.add('confirming');
-        timer = setTimeout(function () {
-          armed = false;
-          btn.textContent = idleLabel;
-          btn.classList.remove('confirming');
-        }, 3000);
-      } else {
-        clearTimeout(timer);
-        armed = false;
-        btn.textContent = idleLabel;
-        btn.classList.remove('confirming');
-        onConfirm();
-      }
-    });
-  }
-
-  armConfirm(clearAllBtn, 'حذف كل الأسماء', 'اضغط مرة أخرى للتأكيد', function () {
-    names = [];
-    safeSet(STORE_NAMES, names);
-    render();
-  });
-
-  armConfirm(clearHistoryBtn, 'مسح السجل', 'اضغط مرة أخرى للتأكيد', function () {
-    history = [];
-    safeSet(STORE_HISTORY, history);
-    render();
-  });
-
-  function formatTime() {
-    try {
-      return new Date().toLocaleString('ar', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
-    } catch (e) {
-      return new Date().toLocaleString();
-    }
-  }
-
-  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  drawBtn.addEventListener('click', function () {
-    if (isDrawing || names.length === 0) return;
-
-    var eligible = names.slice();
-    if (noRepeatToggle.checked) {
-      var pastWinners = history.map(function (h) { return h.name; });
-      var filtered = eligible.filter(function (n) { return pastWinners.indexOf(n) === -1; });
-      if (filtered.length > 0) { eligible = filtered; }
-    }
-    if (eligible.length === 0) {
-      liveRegion.textContent = 'كل الأسماء فازت سابقًا';
-      return;
-    }
-
-    isDrawing = true;
-    drawBtn.disabled = true;
-    radarStage.classList.remove('idle', 'done');
-    radarStage.classList.add('drawing');
-
-    var listLen = eligible.length;
-    var winnerIndex = Math.floor(Math.random() * listLen);
-    var winner = eligible[winnerIndex];
-
-    function finishDraw() {
-      radarText.textContent = winner;
-      radarStage.classList.remove('drawing');
-      radarStage.classList.add('done');
-      liveRegion.textContent = 'الفائز هو ' + winner;
-
-      fireBurstRings();
-      if (!reduceMotion) { fireConfetti(); }
-
-      history.push({ name: winner, time: formatTime() });
-      safeSet(STORE_HISTORY, history);
-
-      if (removeWinnerToggle.checked) {
-        var idx = names.indexOf(winner);
-        if (idx > -1) { names.splice(idx, 1); }
-        safeSet(STORE_NAMES, names);
-      }
-
-      isDrawing = false;
-      render();
-    }
-
-    if (reduceMotion || listLen === 1) {
-      radarText.textContent = eligible[0];
-      setTimeout(finishDraw, 250);
-      return;
-    }
-
-    var READ_DELAY_MIN = 35;
-    var READ_DELAY_MAX = 260;
-    var READ_BUDGET_MS = 2400; // target time for the first full first-to-last pass
-    var READ_DELAY = Math.max(READ_DELAY_MIN, Math.min(READ_DELAY_MAX, READ_BUDGET_MS / listLen));
-
-    var MIN_DELAY = 45;     // fastest point, mid-spin
-    var END_DELAY = 560;    // slowest point, right before it stops
-
-    // enough loops that small lists still feel like a real spin, without making
-    // large lists take forever
-    var totalLoops;
-    if (listLen <= 3) { totalLoops = 7; }
-    else if (listLen <= 8) { totalLoops = 5; }
-    else if (listLen <= 20) { totalLoops = 4; }
-    else { totalLoops = 2; }
-
-    var totalSteps = totalLoops * listLen + winnerIndex + 1;
-
-    var readSteps = listLen; // one full realistic pass through the list first
-    var remaining = totalSteps - readSteps;
-    var accelSteps = Math.floor(remaining / 2);
-    var decelSteps = remaining - accelSteps;
-
-    function easeInQuad(t) { return t * t; }
-    function easeInCubic(t) { return t * t * t; }
-
-    function delayForStep(k) {
-      if (k < readSteps) { return READ_DELAY; }
-      var k2 = k - readSteps;
-      if (k2 < accelSteps) {
-        var t = accelSteps > 1 ? k2 / (accelSteps - 1) : 1;
-        return READ_DELAY + (MIN_DELAY - READ_DELAY) * easeInQuad(t);
-      }
-      var k3 = k2 - accelSteps;
-      var t2 = decelSteps > 1 ? k3 / (decelSteps - 1) : 1;
-      return MIN_DELAY + (END_DELAY - MIN_DELAY) * easeInCubic(t2);
-    }
-
-    function step(k) {
-      var idx = k % listLen;
-      radarText.textContent = eligible[idx];
-      if (k >= totalSteps - 1) {
-        setTimeout(finishDraw, 260);
-        return;
-      }
-      setTimeout(function () { step(k + 1); }, delayForStep(k));
-    }
-
-    step(0);
-  });
-
-  themeToggle.addEventListener('click', function () {
-    var current = document.documentElement.getAttribute('data-theme');
-    var next = current === 'light' ? 'dark' : (current === 'dark' ? null : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark'));
-    if (next) {
-      document.documentElement.setAttribute('data-theme', next);
-      safeSet(STORE_THEME, next);
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      try { localStorage.removeItem(STORE_THEME); } catch (e) {}
-    }
-  });
-
-  render();
-})();
 </script>
 </body>
 </html>
