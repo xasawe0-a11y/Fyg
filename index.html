@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SATR | سَطْر</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B1F3A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SATR">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{--navy:#0B1F3A;--navy2:#143358;--gold:#C9A24B;--bg:#F7F5EF;--card:#fff;--ink:#12263F;--mut:#5D6B7E;--ok:#1E8E5A;--bad:#C0392B;--line:#E3DFD3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -81,23 +87,27 @@ const fmt=n=>Number(n).toLocaleString('ar-SY')+' ل.س';
 const PLANS=[{id:1,name:'المستوى الأول',price:50000,dep:5000,tasks:1,reward:170,inv:500},{id:2,name:'المستوى الثاني',price:120000,dep:12000,tasks:2,reward:200,inv:1000},{id:3,name:'المستوى الثالث',price:360000,dep:36000,tasks:3,reward:400,inv:5000}];
 const TASKS=[
  {id:1,t:'الحرف العربي عبر القرون',lv:1},{id:2,t:'فن الخط الكوفي',lv:2},{id:3,t:'رحلة الكتاب المطبوع',lv:3}
-].map(x=>({...x,body:['اقرأ هذه الأسطر الخمسة بتمعّن، ثم اضغط إتمام المهمة.','تتغير النصوص يومياً بحسب ما تضيفه الإدارة.','كل مهمة مموّلة من رعاة أو إعلانات داخل النص.','تُحتسب المهمة مرة واحدة فقط في اليوم نفسه.','المكافأة صغيرة وثابتة وتظهر قبل البدء.']}));
-const S={user:null,admin:false,seq:10002,msgs:[],settings:{tg:'satr_support',sc:'DEMO-SHAMCASH-CODE',min:10000,day:'الخميس',ap:'SATR@2026'},
+].map(x=>({...x,q:{q:'كم عدد الأسطر التي طُلب منك قراءتها؟',o:['ثلاثة','خمسة','سبعة'],a:1},body:['اقرأ هذه الأسطر الخمسة بتمعّن، ثم اضغط إتمام المهمة.','تتغير النصوص يومياً بحسب ما تضيفه الإدارة.','كل مهمة مموّلة من رعاة أو إعلانات داخل النص.','تُحتسب المهمة مرة واحدة فقط في اليوم نفسه.','المكافأة صغيرة وثابتة وتظهر قبل البدء.']}));
+const S={user:null,admin:false,seq:10002,msgs:[],faq:[{q:'هل الأرباح مضمونة؟',a:'لا. المكافآت صغيرة وتعتمد على إيرادات الرعاة والإعلانات المتاحة.'},{q:'متى أستطيع السحب؟',a:'مرة أسبوعياً في يوم تحدده الإدارة، بعد بلوغ الحد الأدنى.'}],ann:[],alog:[],settings:{tg:'satr_support',sc:'DEMO-SHAMCASH-CODE',min:10000,day:'الخميس',ap:'SATR@2026'},
  users:[{id:'SA10001',name:'سارة',pw:'demo1234',phone:'0991111111',plan:2,status:'active',bal:1200,hold:0,done:[],code:'SATR10001',inv:[]},{id:'SA10002',name:'ياسر',pw:'demo1234',phone:'0992222222',plan:1,status:'pending',bal:0,hold:0,done:[],code:'SATR10002',inv:[]}],
  wd:[{id:'W1001',u:'SA10001',name:'سارة',phone:'0991111111',amt:10000,owner:'سارة أ.',code:'SC-48213',date:'2026-11-03',st:'review',note:''}],
  log:[{u:'SA10001',d:'2026-11-02',k:'إيداع (تجريبي)',a:1200}]};
 const $=s=>document.querySelector(s);
+function A(t){S.alog.push({d:new Date().toISOString().slice(0,16).replace('T',' '),t});if(S.alog.length>200)S.alog.shift()}
+const faqHTML=()=>S.faq.map(f=>`<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('');
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 function toast(m,ok=true){if(ok)save();const t=$('#toast');t.textContent=m;t.style.background=ok?'var(--ok)':'var(--bad)';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
 const me=()=>S.user&&S.users.find(u=>u.id===S.user);
 const plan=u=>PLANS.find(p=>p.id===u.plan);
 const today=()=>new Date().toISOString().slice(0,10);
 function go(p){location.hash=p;}
 const PUB=[['home','الرئيسية'],['login','دخول'],['register','حساب جديد']];
-const USR=[['dash','الرئيسية'],['tasks','المهام'],['levels','المستويات'],['refs','الدعوات'],['wallet','المحفظة'],['deposit','شحن'],['withdraw','سحب'],['history','السجل'],['trade','تداول تجريبي'],['support','الدعم'],['profile','حسابي']];
+const USR=[['dash','الرئيسية'],['tasks','المهام'],['levels','المستويات'],['refs','الدعوات'],['wallet','المحفظة'],['deposit','شحن'],['withdraw','سحب'],['history','السجل'],['orders','طلباتي'],['trade','تداول تجريبي'],['support','الدعم'],['profile','حسابي']];
 function drawNav(){const p=(location.hash||'#home').slice(1),u=me();
  const items=S.admin?[['admin','الإدارة']]:u?USR:PUB;
+ const n2=u?S.wd.filter(w=>w.u===u.id&&w.st!=='review'&&!w.seen).length:0;
  const n=S.admin?S.msgs.filter(m=>m.from==='user'&&!m.aread).length:u?S.msgs.filter(m=>m.u===u.id&&m.from==='admin'&&!m.read).length:0;
- $('#nav').innerHTML=items.map(([k,l])=>`<a href="#${k}" class="${p===k?'on':''}">${l}${(k==='support'||k==='admin')&&n?`<span class="bdg" aria-label="رسائل جديدة">${n}</span>`:''}</a>`).join('')+(u||S.admin?'<a id="out">خروج</a>':'<a href="#admin-login">الإدارة</a>');
+ $('#nav').innerHTML=items.map(([k,l])=>`<a href="#${k}" class="${p===k?'on':''}">${l}${(k==='support'||k==='admin')&&n?`<span class="bdg" aria-label="رسائل جديدة">${n}</span>`:''}${k==='orders'&&n2?`<span class="bdg" aria-label="تحديث في طلباتك">${n2}</span>`:''}</a>`).join('')+(u||S.admin?'<a id="out">خروج</a>':'<a href="#admin-login">الإدارة</a>');
  const o=$('#out');if(o)o.onclick=()=>{S.user=null;S.admin=false;go('home')};
  const f=$('#fab');f.hidden=!(n>0&&!(u&&p==='support'));f.innerHTML='💬<span>'+n+'</span>';
  document.title=(n?'('+n+') ':'')+'SATR | سَطْر'}
@@ -109,7 +119,7 @@ function render(){
  try{S.user?localStorage.setItem('satr_u',S.user):localStorage.removeItem('satr_u')}catch(e){}
  const p=(location.hash||'#home').slice(1),u=me();
  drawNav();
- const gated=['dash','tasks','levels','refs','wallet','deposit','withdraw','history','trade','support','profile'];
+ const gated=['dash','tasks','levels','refs','wallet','deposit','withdraw','history','orders','trade','support','profile'];
  if(gated.includes(p)&&!u){return go('login')}
  const need=['tasks','wallet','withdraw'];
  if(u&&u.status!=='active'&&need.includes(p)){$('#app').innerHTML=`<div class="wrap"><div class="card form"><h2>حسابك قيد المراجعة</h2><p>لا يمكن استخدام المهام أو المحفظة قبل موافقة الإدارة.</p></div></div>`;return}
@@ -128,8 +138,7 @@ home(){$('#app').innerHTML=`
 <div class="card"><b>اقرأ وأنجز</b><p class="muted">أكمل مهامك اليومية حسب مستواك، مرة واحدة لكل مهمة.</p></div>
 <div class="card"><b>اسحب أسبوعياً</b><p class="muted">اطلب السحب إلى شام كاش، وتراجعه الإدارة وتسجّل الدفع.</p></div></div></div></section>
 <section><div class="wrap"><h2>الأسئلة الشائعة</h2>
-<details><summary>هل الأرباح مضمونة؟</summary><p>لا. المكافآت صغيرة وتعتمد على إيرادات الرعاة والإعلانات المتاحة.</p></details>
-<details><summary>متى أستطيع السحب؟</summary><p>مرة أسبوعياً في يوم تحدده الإدارة، بعد بلوغ الحد الأدنى.</p></details>
+${faqHTML()}
 <details><summary>كيف أتواصل مع الدعم؟</summary><p><a href="${tgl()}" target="_blank" rel="noopener">راسلنا على تلغرام</a></p></details></div></section>`},
 register(){$('#app').innerHTML=`<div class="wrap"><form class="card form" onsubmit="return reg(event)"><h2>إنشاء حساب</h2>
 <label>اسمك</label><input id="nm" required maxlength="40" placeholder="الاسم الذي سيظهر لدى الإدارة"><label>رقم الهاتف</label><input id="ph" inputmode="numeric" required pattern="09[0-9]{8}" placeholder="09xxxxxxxx">
@@ -142,12 +151,12 @@ login(){$('#app').innerHTML=`<div class="wrap"><form class="card form" onsubmit=
 <p><button class="btn" style="width:100%">دخول</button></p><p class="muted">نسيت كلمة المرور؟ تُرسل الإدارة رابط استعادة بعد التحقق من هويتك عبر تلغرام.</p></form></div>`},
 'admin-login'(){$('#app').innerHTML=`<div class="wrap"><form class="card form" onsubmit="return adminLogin(event)"><h2>دخول الإدارة</h2><label>كلمة مرور الإدارة</label><input id="ap" type="password" required><p><button class="btn">دخول</button></p></form></div>`},
 dash(){const u=me(),p=plan(u);const earned=S.log.filter(l=>l.u===u.id&&l.k==='مهمة').reduce((a,b)=>a+b.a,0);
-$('#app').innerHTML=`<div class="wrap"><section><h2>أهلاً ${esc(u.name)}</h2>
-<div class="grid">${[['رقم الحساب',u.id],['الهاتف',u.phone],['المستوى',p.name],['الحالة',u.status==='active'?'<span class="tag t-ok">نشط</span>':'<span class="tag t-w">معلّق</span>'],['الرصيد الإجمالي',fmt(u.bal+u.hold)],['المتاح',fmt(u.bal)],['المحجوز',fmt(u.hold)],['أرباح المهام',fmt(earned)],['مهام مكتملة',u.done.length],['الأصدقاء المدعوون',u.inv.length]].map(([a,b])=>`<div class="card"><div class="muted">${a}</div><div class="stat">${b}</div></div>`).join('')}</div></section></div>`},
+$('#app').innerHTML=`<div class="wrap"><section><h2>أهلاً ${esc(u.name)}</h2>${S.ann.slice(-3).reverse().map(a=>`<div class="note">📢 ${esc(a.text)} <small class="muted">${a.d}</small></div>`).join('')}
+<div class="grid">${[['رقم الحساب',u.id],['الهاتف',u.phone],['المستوى',p.name],['الحالة',u.status==='active'?'<span class="tag t-ok">نشط</span>':'<span class="tag t-w">معلّق</span>'],['الرصيد الإجمالي',fmt(u.bal+u.hold)],['المتاح',fmt(u.bal)],['المحجوز',fmt(u.hold)],['أرباح المهام',fmt(earned)],['مهام مكتملة',u.done.length],['الأصدقاء المدعوون',u.inv.length],['أيام القراءة المتتالية 🔥',u.streak||0]].map(([a,b])=>`<div class="card"><div class="muted">${a}</div><div class="stat">${b}</div></div>`).join('')}</div></section></div>`},
 tasks(){const u=me(),p=plan(u),d=today();
  const list=TASKS.filter(t=>t.lv<=u.plan).slice(0,p.tasks);
- $('#app').innerHTML=`<div class="wrap"><section><h2>المهام اليومية</h2><p class="muted">مهامك اليوم: ${p.tasks}. المكافأة ${fmt(p.reward)} لكل مهمة.</p>
- ${list.map(t=>{const dn=u.done.includes(t.id+d);return `<div class="card" style="margin-bottom:12px"><div class="task"><div><b>${esc(t.t)}</b>${t.body.map(l=>`<p>${esc(l)}</p>`).join('')}</div>
+ $('#app').innerHTML=`<div class="wrap"><section><h2>المهام اليومية</h2><p class="muted">مهامك اليوم: ${p.tasks}. المكافأة ${fmt(p.reward)} لكل مهمة. 🔥 أيام متتالية: ${u.streak||0}</p>
+ ${list.map(t=>{const dn=u.done.includes(t.id+d);return `<div class="card" style="margin-bottom:12px"><div class="task"><div><b>${esc(t.t)}</b>${t.body.map(l=>`<p>${esc(l)}</p>`).join('')}${t.q&&!dn?`<p><b>${esc(t.q.q)}</b></p><select id="qa_${t.id}"><option value="-1">اختر الإجابة</option>${t.q.o.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>`:''}</div>
  <div><div class="tag t-w">${fmt(p.reward)}</div><p><button class="btn ${dn?'':'ok'}" ${dn?'disabled':''} onclick="doTask(${t.id})">${dn?'تمت اليوم':'إتمام المهمة'}</button></p></div></div></div>`}).join('')}</section></div>`},
 levels(){$('#app').innerHTML=`<div class="wrap"><section><h2>مستويات العضوية</h2><div class="note">المكافآت اليومية أدناه هي القيمة الفعلية لكل مهمة، وليست أرباحاً مضمونة. وتعتمد على تمويل الرعاة.</div><div class="grid">${planCards(true)}</div></section></div>`},
 refs(){const u=me(),link=location.href.split('#')[0]+'?ref='+u.code,act=u.inv.filter(i=>i.ok).length;
@@ -174,8 +183,18 @@ withdraw(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><form cl
 <div class="warn">⚠️ يرجى التأكد من كود شام كاش جيداً قبل إرسال طلب السحب، والتأكد من أن الكود يعود إلى الحساب الصحيح.</div>
 <p><button class="btn" style="width:100%">طلب سحب الأرباح</button></p></form></section></div>`},
 history(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><h2>سجل العمليات</h2><div class="card scroll"><table><tr><th>التاريخ</th><th>العملية</th><th>المبلغ</th></tr>${S.log.filter(l=>l.u===u.id).reverse().map(l=>`<tr><td>${l.d}</td><td>${l.k}</td><td style="color:${l.a<0?'var(--bad)':'var(--ok)'}">${fmt(l.a)}</td></tr>`).join('')||'<tr><td colspan=3>لا عمليات بعد. أنجز مهمتك الأولى.</td></tr>'}</table></div></section></div>`},
+orders(){const u=me(),ws=S.wd.filter(w=>w.u===u.id).slice().reverse(),fresh=new Set(ws.filter(w=>w.st!=='review'&&!w.seen).map(w=>w.id));
+if(fresh.size){ws.forEach(w=>{if(fresh.has(w.id))w.seen=true});save();drawNav()}
+const ST={review:['قيد المراجعة','t-w'],accepted:['مقبول، بانتظار الدفع','t-ok'],paid:['تم الدفع','t-ok'],rejected:['مرفوض','t-bad']};
+const ch=S.msgs.filter(m=>m.u===u.id&&m.from==='user'&&m.topic==='شحن').slice().reverse();
+$('#app').innerHTML=`<div class="wrap"><section><h2>طلباتي</h2>
+<h3>طلبات السحب</h3>${ws.map(w=>`<div class="card" style="margin-bottom:10px"><div class="task"><div><b>${w.id}</b> · ${fmt(w.amt)}<br><span class="muted">${w.date}</span>${w.note?`<p class="muted">${w.st==='rejected'?'سبب الرفض: ':''}${esc(w.note)}</p>`:''}</div>
+<div><span class="tag ${ST[w.st][1]}">${ST[w.st][0]}</span>${fresh.has(w.id)?' <span class="tag t-bad">جديد</span>':''}</div></div></div>`).join('')||'<p class="muted">لا طلبات سحب بعد.</p>'}
+<h3 style="margin-top:24px">إشعارات الشحن</h3>${ch.map(m=>{const rp=S.msgs.some(a=>a.u===u.id&&a.from==='admin'&&+a.id.slice(1)>+m.id.slice(1));return `<div class="card" style="margin-bottom:10px"><div class="task"><div><span class="muted">${m.d}</span><p>${esc(m.text)}</p></div><span class="tag ${rp?'t-ok':'t-w'}">${rp?'تم الرد من الدعم':'بانتظار الدعم'}</span></div></div>`}).join('')||'<p class="muted">لم ترسل إشعار شحن بعد.</p>'}
+<p class="muted">ردود الدعم تجدها في صفحة «الدعم».</p></section></div>`},
 trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجريبي</h2>
-<div class="card"><div class="muted">رصيد المحفظة المتاح</div><div class="stat" id="tbal"></div></div>
+<div class="note">⚠️ هذه محاكاة تعليمية: الأسعار عشوائية وليست أسعار السوق الحقيقية، والرصيد التجريبي منفصل تماماً عن محفظتك، لا يُسحب ولا يؤثر على رصيدك الحقيقي.</div>
+<div class="card"><div class="muted">الرصيد التجريبي</div><div class="stat" id="tbal"></div><button class="btn alt sm" onclick="T.bal=10000;T.pos=[];T.hist=[];V.trade()">إعادة ضبط</button></div>
 <div class="grid" style="margin:16px 0">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')">${m.n}<br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div>
 <div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
@@ -187,15 +206,19 @@ trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجري�
 support(){const u=me(),th=S.msgs.filter(m=>m.u===u.id),fresh=new Set(th.filter(m=>m.from==='admin'&&!m.read).map(m=>m.id));
 if(fresh.size){th.forEach(m=>{if(fresh.has(m.id))m.read=true});save();drawNav()}
 $('#app').innerHTML=`<div class="wrap"><section><div class="card form" style="max-width:520px"><h2>مراسلة الدعم</h2>
+<details><summary>أسئلة شائعة</summary>${faqHTML()}</details>
 <div style="max-height:320px;overflow-y:auto;margin-bottom:12px">${th.map(m=>`<div class="mrow" style="margin:8px 0"><div><span class="tag ${m.from==='admin'?'t-ok':'t-w'}">${m.from==='admin'?'الدعم':'أنت'} · ${m.d}</span>${fresh.has(m.id)?' <span class="tag t-bad">جديد</span>':''}<p style="margin:2px 0">${esc(m.text)}</p></div><button class="btn bad sm" onclick="delMsg('${m.id}')">${window.DM===m.id?'تأكيد':'حذف'}</button></div>`).join('')||'<p class="muted">لا رسائل بعد.</p>'}</div>
 ${th.length?`<p><button class="btn alt sm" onclick="delThread()">${window.DT2==='me'?'تأكيد حذف المحادثة':'حذف المحادثة كاملة'}</button></p>`:''}<label>الموضوع</label><select id="mt"><option>شحن</option><option>سحب</option><option>استفسار</option></select>
 <label>رسالتك</label><textarea id="mx" rows="3" maxlength="500"></textarea>
 <p><button class="btn" style="width:100%" onclick="sendMsg()">إرسال</button></p></div></section></div>`},
-profile(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><div class="card form"><h2>حسابي</h2><p>رقم الحساب: <b>${u.id}</b></p><p>الهاتف: <b>${u.phone}</b></p><p>المستوى: <b>${plan(u).name}</b></p></div></section></div>`},
+profile(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><div class="card form"><h2>حسابي</h2><p>رقم الحساب: <b>${u.id}</b></p><p>الهاتف: <b>${u.phone}</b></p><p>المستوى: <b>${plan(u).name}</b></p>
+<h3 style="margin-top:24px">تغيير كلمة المرور</h3><label>الحالية</label><input id="cp0" type="password"><label>الجديدة (8 أحرف على الأقل)</label><input id="cp1" type="password"><label>تأكيد الجديدة</label><input id="cp2" type="password"><p><button class="btn" style="width:100%" onclick="chPw()">تغيير</button></p></div></section></div>`},
 admin(){const q=(window.AQ||'').trim(),et=TASKS.find(t=>t.id===window.ET)||{};
  const wds=S.wd.filter(w=>!q||[w.name,w.phone,w.id].some(x=>x.includes(q)));
  $('#app').innerHTML=`<div class="wrap"><section><h2>لوحة الإدارة</h2>
  <div class="grid">${[['المستخدمون',S.users.length],['النشطة',S.users.filter(u=>u.status==='active').length],['المعلّقة',S.users.filter(u=>u.status==='pending').length],['طلبات السحب',S.wd.length]].map(([a,b])=>`<div class="card"><div class="muted">${a}</div><div class="stat">${b}</div></div>`).join('')}</div>
+ <div class="grid" style="margin-top:16px">${[['مهام منجزة اليوم',S.log.filter(l=>l.k==='مهمة'&&l.d===today()).length],['إجمالي المدفوع',fmt(S.wd.filter(w=>w.st==='paid').reduce((a,w)=>a+w.amt,0))],['سحوبات معلّقة',fmt(S.wd.filter(w=>w.st==='review'||w.st==='accepted').reduce((a,w)=>a+w.amt,0))]].map(([a,b])=>`<div class="card"><div class="muted">${a}</div><div class="stat">${b}</div></div>`).join('')}</div>
+ <div class="card scroll" style="margin-top:12px"><b>الأكثر نشاطاً</b><table><tr><th>الاسم</th><th>مهام مكتملة</th><th>أيام متتالية</th></tr>${S.users.slice().sort((a,b)=>b.done.length-a.done.length).slice(0,5).map(u=>`<tr><td>${esc(u.name)}</td><td>${u.done.length}</td><td>${u.streak||0}</td></tr>`).join('')}</table></div>
  <h2 style="margin-top:28px">إدارة المستخدمين</h2>${window.RP?`<div class="note">كلمة المرور المؤقتة للحساب ${window.RP.id}: <b dir="ltr">${window.RP.p}</b> — سلّمها للعميل ليغيّرها فور دخوله.</div>`:''}<div class="card scroll"><table><tr><th>الحساب</th><th>الاسم</th><th>الهاتف</th><th>المستوى</th><th>الحالة</th><th></th></tr>
  ${S.users.map(u=>`<tr><td>${u.id}</td><td>${esc(u.name)}</td><td>${u.phone}</td><td><select onchange="setPlan('${u.id}',this.value)" style="min-width:130px">${PLANS.map(p=>`<option value="${p.id}" ${p.id===u.plan?'selected':''}>${p.name}</option>`).join('')}</select></td><td>${u.status==='active'?'نشط':u.status==='pending'?'معلّق':'موقوف'}</td>
  <td><button class="btn ok sm" onclick="setU('${u.id}','active')">تفعيل</button> <button class="btn bad sm" onclick="setU('${u.id}','suspended')">تعليق</button> <button class="btn alt sm" onclick="resetPw('${u.id}')">كلمة مرور جديدة</button> <button class="btn bad sm" onclick="delU('${u.id}')">${window.DC===u.id?'تأكيد الحذف':'حذف'}</button></td></tr>`).join('')}</table></div>
@@ -207,8 +230,12 @@ admin(){const q=(window.AQ||'').trim(),et=TASKS.find(t=>t.id===window.ET)||{};
  <h2 id="msgs" style="margin-top:28px">رسائل الدعم</h2>${Object.entries(S.msgs.reduce((g,m)=>((g[m.u]=g[m.u]||[]).push(m),g),{})).sort((a,b)=>(b[1].at(-1).from==='user')-(a[1].at(-1).from==='user')).map(([id,ms])=>`<div class="card" style="margin-bottom:10px"><b>${esc(ms.find(m=>m.name)?.name||id)}</b> <span class="muted">${id}</span> ${ms.at(-1).from==='user'?'<span class="tag t-bad">بانتظار الرد</span>':'<span class="tag t-ok">تم الرد</span>'} <button class="btn bad sm" style="float:left" onclick="delThread('${id}')">${window.DT2===id?'تأكيد حذف المحادثة':'حذف المحادثة'}</button>
  <div style="max-height:260px;overflow-y:auto">${ms.map(m=>`<div class="mrow"><p><span class="tag ${m.from==='admin'?'t-ok':'t-w'}">${m.from==='admin'?'الإدارة':esc(m.topic)}</span> ${esc(m.text)}${m.from==='admin'?(m.read?' <small class="muted">✓ قُرئت</small>':''):''}</p><button class="btn bad sm" onclick="delMsg('${m.id}')">${window.DM===m.id?'تأكيد':'حذف'}</button></div>`).join('')}</div>
  <div style="display:flex;gap:8px"><input id="r_${id}" placeholder="اكتب الرد"><button class="btn sm" onclick="replyMsg('${id}')">رد</button></div></div>`).join('')||'<div class="card muted">لا رسائل</div>'}
- <h2 style="margin-top:28px">إدارة المهام والنصوص</h2><div class="card"><label>عنوان المهمة</label><input id="tt" value="${esc(et.t||'')}"><label>تظهر من المستوى</label><select id="tl">${PLANS.map(p=>`<option value="${p.id}" ${p.id===(et.lv||1)?'selected':''}>${p.name} وما فوقه</option>`).join('')}</select><label>النص المراد قراءته (كل سطر في سطر جديد)</label><textarea id="tb" rows="6">${esc((et.body||[]).join('\n'))}</textarea><p><button class="btn" onclick="saveT()">${et.id?'حفظ التعديل':'إضافة المهمة'}</button> ${et.id?'<button class="btn alt sm" onclick="window.ET=null;V.admin()">إلغاء</button>':''}</p></div>
+ <h2 style="margin-top:28px">إدارة المهام والنصوص</h2><div class="card"><label>عنوان المهمة</label><input id="tt" value="${esc(et.t||'')}"><label>تظهر من المستوى</label><select id="tl">${PLANS.map(p=>`<option value="${p.id}" ${p.id===(et.lv||1)?'selected':''}>${p.name} وما فوقه</option>`).join('')}</select><label>النص المراد قراءته (كل سطر في سطر جديد)</label><textarea id="tb" rows="6">${esc((et.body||[]).join('\n'))}</textarea><label>سؤال بعد القراءة (اختياري)</label><input id="qq" value="${esc((et.q||{}).q||'')}"><label>الخيارات (كل خيار في سطر)</label><textarea id="qo" rows="3">${esc(((et.q||{}).o||[]).join('\n'))}</textarea><label>رقم الإجابة الصحيحة (1 = أول خيار)</label><input id="qc" type="number" min="1" value="${((et.q||{}).a??0)+1}"><p><button class="btn" onclick="saveT()">${et.id?'حفظ التعديل':'إضافة المهمة'}</button> ${et.id?'<button class="btn alt sm" onclick="window.ET=null;V.admin()">إلغاء</button>':''}</p></div>
  <div class="card scroll" style="margin-top:12px"><table><tr><th>العنوان</th><th>المستوى</th><th></th></tr>${TASKS.map(t=>`<tr><td>${esc(t.t)}</td><td>${PLANS.find(p=>p.id===t.lv).name}</td><td><button class="btn sm" onclick="editT(${t.id})">تعديل</button> <button class="btn bad sm" onclick="delT(${t.id})">${window.DT===t.id?'تأكيد الحذف':'حذف'}</button></td></tr>`).join('')||'<tr><td colspan=3>لا مهام</td></tr>'}</table></div>
+ <h2 style="margin-top:28px">إعلان لكل العملاء</h2><div class="card"><textarea id="an" rows="2" maxlength="300" placeholder="مثال: السحب هذا الأسبوع يوم الخميس"></textarea><p><button class="btn" onclick="addAnn()">نشر الإعلان</button></p>${S.ann.slice().reverse().map(a=>`<div class="mrow"><p>${esc(a.text)} <small class="muted">${a.d}</small></p><button class="btn bad sm" onclick="delAnn('${a.id}')">حذف</button></div>`).join('')}</div>
+ <h2 style="margin-top:28px">الأسئلة الشائعة</h2><div class="card"><label>السؤال</label><input id="fq"><label>الجواب</label><textarea id="fa" rows="2"></textarea><p><button class="btn" onclick="addFaq()">إضافة</button></p>${S.faq.map((f,i)=>`<div class="mrow"><p><b>${esc(f.q)}</b></p><button class="btn bad sm" onclick="delFaq(${i})">حذف</button></div>`).join('')}</div>
+ <h2 style="margin-top:28px">التقارير والنسخ الاحتياطي</h2><div class="card"><button class="btn" onclick="exportWd()">تصدير طلبات السحب (CSV)</button> <button class="btn alt" onclick="backup()">تنزيل نسخة احتياطية</button><label>استعادة من نسخة احتياطية</label><input type="file" accept=".json" onchange="restore(this)"><p class="muted">النسخة الاحتياطية تحوي كل البيانات وكلمات المرور، فلا تشاركها.</p></div>
+ <h2 style="margin-top:28px">سجل نشاط الإدارة</h2><div class="card scroll"><table>${S.alog.slice(-15).reverse().map(a=>`<tr><td>${a.d}</td><td>${esc(a.t)}</td></tr>`).join('')||'<tr><td>لا نشاط بعد</td></tr>'}</table></div>
  <h2 style="margin-top:28px">الإعدادات</h2><div class="card"><label>معرّف تلغرام للدعم (بدون @)</label><input id="sw" value="${S.settings.tg}" dir="ltr"><label>كود شام كاش للإيداع (اختياري)</label><input id="ssc" value="${esc(S.settings.sc||'')}" dir="ltr"><label>الحد الأدنى للسحب</label><input id="sm" type="number" value="${S.settings.min}"><label>كلمة مرور الإدارة الجديدة (اتركها فارغة بلا تغيير)</label><input id="np" type="password" minlength="8">
  <label>Bot Token (يُخزَّن على الخادم فقط)</label><input type="password" placeholder="غير مفعّل في النسخة التجريبية"><p><button class="btn" onclick="S.settings.tg=$('#sw').value.replace(/[^A-Za-z0-9_]/g,'');S.settings.sc=$('#ssc').value.trim();S.settings.min=+$('#sm').value;if($('#np').value.length>=8){S.settings.ap=$('#np').value;$('#np').value=''}toast('تم حفظ الإعدادات')">حفظ</button></p></div></section></div>`}
 };
@@ -236,7 +263,16 @@ function reg(e){e.preventDefault();const ph=$('#ph').value,pw=$('#pw').value,nm=
 function login(e){e.preventDefault();const u=S.users.find(x=>x.phone===$('#ph').value);
  if(!u)return toast('الرقم غير مسجّل',false),false;if(u.pw!==$('#pw').value)return toast('كلمة المرور غير صحيحة',false),false;S.user=u.id;go('dash');return false}
 function doTask(id){const u=me(),k=id+today();if(u.done.includes(k))return toast('أُنجزت هذه المهمة اليوم',false);
- u.done.push(k);const r=plan(u).reward;u.bal+=r;S.log.push({u:u.id,d:today(),k:'مهمة',a:r});toast('أحسنت! أُضيفت '+fmt(r)+' إلى رصيدك');V.tasks()}
+ const t=TASKS.find(x=>x.id===id);
+ if(t&&t.q){const a=$('#qa_'+id);if(!a||+a.value!==t.q.a)return toast('إجابة غير صحيحة، أعد قراءة النص وحاول مجدداً',false)}
+ u.done.push(k);const d=today(),y=new Date(Date.now()-864e5).toISOString().slice(0,10);
+ if(u.last!==d){u.streak=u.last===y?(u.streak||0)+1:1;u.last=d}
+ const r=plan(u).reward;u.bal+=r;S.log.push({u:u.id,d:today(),k:'مهمة',a:r});toast('أحسنت! أُضيفت '+fmt(r)+' إلى رصيدك');V.tasks()}
+function chPw(){const u=me(),o=$('#cp0').value,n=$('#cp1').value;
+ if(o!==u.pw)return toast('كلمة المرور الحالية غير صحيحة',false);
+ if(n.length<8)return toast('كلمة المرور الجديدة 8 أحرف على الأقل',false);
+ if(n!==$('#cp2').value)return toast('كلمتا المرور غير متطابقتين',false);
+ u.pw=n;toast('تم تغيير كلمة المرور');V.profile()}
 function wdr(e){e.preventDefault();const u=me(),a=+$('#am').value;
  if($('#c1').value!==$('#c2').value)return toast('كودا شام كاش غير متطابقين',false),false;
  if(a<S.settings.min)return toast('الحد الأدنى '+fmt(S.settings.min),false),false;
@@ -246,20 +282,33 @@ function wdr(e){e.preventDefault();const u=me(),a=+$('#am').value;
  S.log.push({u:u.id,d:today(),k:'حجز سحب '+id,a:-a});toast('أُرسل طلبك '+id+' إلى الإدارة');go('history');return false}
 function setU(id,st){const u=S.users.find(x=>x.id===id);const was=u.status;u.status=st;
  if(st==='active'&&was!=='active'){const r=S.users.find(x=>x.inv.some(i=>i.id===id&&!i.ok));if(r){r.inv.find(i=>i.id===id).ok=true;r.bal+=plan(r).inv;S.log.push({u:r.id,d:today(),k:'مكافأة دعوة',a:plan(r).inv})}}
- toast('تم تحديث الحساب');V.admin()}
+ A('الحساب '+id+' ← '+st);toast('تم تحديث الحساب');V.admin()}
 function wst(id,st){const w=S.wd.find(x=>x.id===id),u=S.users.find(x=>x.id===w.u);
  if(st==='rejected'){const n=($('#rj')||{}).value;u.hold-=w.amt;u.bal+=w.amt;w.note=n||'';S.log.push({u:u.id,d:today(),k:'إعادة مبلغ '+id,a:w.amt})}
  if(st==='paid'){u.hold-=w.amt;w.note='دُفع '+today()}
- w.st=st;toast('تم تحديث الطلب');V.admin()}
+ w.st=st;w.seen=false;A('الطلب '+id+' ← '+st);toast('تم تحديث الطلب');V.admin()}
 function adminLogin(e){e.preventDefault();if($('#ap').value!==S.settings.ap)return toast('كلمة المرور غير صحيحة',false),false;S.admin=true;go('admin');return false}
-function setPlan(id,p){const u=S.users.find(x=>x.id===id);u.plan=+p;toast('تم تغيير المستوى إلى '+plan(u).name)}
-function delU(id){if(window.DC!==id){window.DC=id;toast('اضغط «تأكيد الحذف» مرة ثانية لحذف '+id,false);V.admin();return}window.DC=null;S.users=S.users.filter(x=>x.id!==id);S.wd=S.wd.filter(w=>w.u!==id||w.st==='paid');S.log=S.log.filter(l=>l.u!==id);S.msgs=S.msgs.filter(m=>m.u!==id);S.users.forEach(x=>{x.inv=x.inv.filter(i=>i.id!==id)});toast('تم حذف الحساب');V.admin()}
+function setPlan(id,p){const u=S.users.find(x=>x.id===id);u.plan=+p;A('مستوى '+id+' ← '+plan(u).name);toast('تم تغيير المستوى إلى '+plan(u).name)}
+function delU(id){if(window.DC!==id){window.DC=id;toast('اضغط «تأكيد الحذف» مرة ثانية لحذف '+id,false);V.admin();return}window.DC=null;A('حذف الحساب '+id);S.users=S.users.filter(x=>x.id!==id);S.wd=S.wd.filter(w=>w.u!==id||w.st==='paid');S.log=S.log.filter(l=>l.u!==id);S.msgs=S.msgs.filter(m=>m.u!==id);S.users.forEach(x=>{x.inv=x.inv.filter(i=>i.id!==id)});toast('تم حذف الحساب');V.admin()}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function saveT(){const t=$('#tt').value.trim(),b=$('#tb').value.split('\n').map(x=>x.trim()).filter(Boolean);if(!t||!b.length)return toast('أدخل العنوان والنص',false);const lv=+$('#tl').value,ex=TASKS.find(x=>x.id===window.ET);if(ex){ex.t=t;ex.lv=lv;ex.body=b}else TASKS.push({id:Date.now(),t,lv,body:b});window.ET=null;toast('تم حفظ المهمة');V.admin()}
+function saveT(){const t=$('#tt').value.trim(),b=$('#tb').value.split('\n').map(x=>x.trim()).filter(Boolean);if(!t||!b.length)return toast('أدخل العنوان والنص',false);
+ const qq=$('#qq').value.trim(),qo=$('#qo').value.split('\n').map(x=>x.trim()).filter(Boolean),qa=+$('#qc').value-1,q=qq&&qo.length>=2&&qa>=0&&qa<qo.length?{q:qq,o:qo,a:qa}:undefined;
+ if(qq&&!q)return toast('السؤال يحتاج خيارين على الأقل ورقم إجابة صحيحاً',false);
+ const lv=+$('#tl').value,ex=TASKS.find(x=>x.id===window.ET);if(ex){ex.t=t;ex.lv=lv;ex.body=b;ex.q=q}else TASKS.push({id:Date.now(),t,lv,body:b,q});window.ET=null;A('حفظ مهمة: '+t);toast('تم حفظ المهمة');V.admin()}
 function copyC(id){const w=S.wd.find(x=>x.id===id),t=w.code,ok=()=>toast('تم نسخ الكود '+t);const fb=()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();let r=false;try{r=document.execCommand('copy')}catch(e){}a.remove();r?ok():toast('انسخ الكود يدوياً: '+t,false)};if(navigator.clipboard)navigator.clipboard.writeText(t).then(ok,fb);else fb()}
-function resetPw(id){const u=S.users.find(x=>x.id===id),p='S'+Math.random().toString(36).slice(2,9);u.pw=p;window.RP={id,p};save();V.admin()}
+function resetPw(id){const u=S.users.find(x=>x.id===id),p='S'+Math.random().toString(36).slice(2,9);u.pw=p;window.RP={id,p};A('كلمة مرور جديدة لـ '+id);save();V.admin()}
 function editT(id){window.ET=id;V.admin();$('#tt').scrollIntoView({block:'center'})}
-function delT(id){if(window.DT!==id){window.DT=id;toast('اضغط «تأكيد الحذف» مرة ثانية',false);V.admin();return}window.DT=null;const i=TASKS.findIndex(t=>t.id===id);if(i>-1)TASKS.splice(i,1);toast('تم حذف المهمة');V.admin()}
+function delT(id){if(window.DT!==id){window.DT=id;toast('اضغط «تأكيد الحذف» مرة ثانية',false);V.admin();return}window.DT=null;A('حذف مهمة');const i=TASKS.findIndex(t=>t.id===id);if(i>-1)TASKS.splice(i,1);toast('تم حذف المهمة');V.admin()}
+function addAnn(){const t=$('#an').value.trim();if(!t)return toast('اكتب الإعلان',false);S.ann.push({id:'A'+Date.now(),d:today(),text:t});A('نشر إعلان');toast('تم نشر الإعلان');V.admin()}
+function delAnn(id){S.ann=S.ann.filter(a=>a.id!==id);A('حذف إعلان');toast('تم حذف الإعلان');V.admin()}
+function addFaq(){const q=$('#fq').value.trim(),a=$('#fa').value.trim();if(!q||!a)return toast('أدخل السؤال والجواب',false);S.faq.push({q,a});A('إضافة سؤال شائع');toast('تمت الإضافة');V.admin()}
+function delFaq(i){S.faq.splice(i,1);A('حذف سؤال شائع');toast('تم الحذف');V.admin()}
+function dl(name,text,type){const b=new Blob([text],{type}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function exportWd(){const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"',st={review:'قيد المراجعة',accepted:'مقبول',rejected:'مرفوض',paid:'تم الدفع'};
+ dl('withdrawals-'+today()+'.csv','\ufeff'+['الطلب,الحساب,الاسم,الهاتف,المبلغ,صاحب الحساب,الكود,التاريخ,الحالة,ملاحظة'].concat(S.wd.map(w=>[w.id,w.u,w.name,w.phone,w.amt,w.owner,w.code,w.date,st[w.st],w.note].map(q).join(','))).join('\r\n'),'text/csv;charset=utf-8');A('تصدير السحوبات')}
+function backup(){dl('satr-backup-'+today()+'.json',snap(),'application/json');A('تنزيل نسخة احتياطية')}
+function restore(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.users))throw 0;if(!confirm('سيتم استبدال كل البيانات الحالية بالنسخة المختارة. متابعة؟'))return;
+ S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];S.msgs=d.msgs||[];S.faq=d.faq||S.faq;S.ann=d.ann||[];S.alog=d.alog||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}A('استعادة نسخة احتياطية');toast('تمت الاستعادة');V.admin()}catch(e){toast('ملف غير صالح',false)}};r.readAsText(f)}
 async function sendMsg(t){const u=me(),x=$('#mx'),tx=x.value.trim();if(!tx)return toast('اكتب رسالتك',false);
  await pull();
  S.msgs.push({id:'M'+Date.now(),u:u.id,name:u.name,from:'user',topic:t||($('#mt')||{}).value||'استفسار',text:tx,d:today()});
@@ -274,42 +323,29 @@ async function delMsg(mid){if(window.DM!==mid){window.DM=mid;toast('اضغط «�
 async function delThread(uid){uid=S.admin?uid:'me';if(window.DT2!==uid){window.DT2=uid;toast('اضغط مرة ثانية لحذف المحادثة كاملة',false);S.admin?V.admin():V.support();return}window.DT2=null;await pull();
  const id=S.admin?uid:S.user;S.msgs=S.msgs.filter(m=>m.u!==id);
  toast('تم حذف المحادثة من الطرفين');drawNav();S.admin?V.admin():V.support()}
-const MK={gold:{n:'ذهب 🥇',p:2650,v:.004},oil:{n:'نفط 🛢️',p:75,v:.006},btc:{n:'بتكوين ₿',p:95000,v:.009},stk:{n:'سهم تجريبي 📈',p:120,v:.012}};
+const MK={gold:{n:'سلعة أ 🟡',p:2650,v:.004},oil:{n:'سلعة ب ⚫',p:75,v:.006},btc:{n:'بتكوين ₿',p:95000,v:.009},stk:{n:'سهم تجريبي 📈',p:120,v:.012}};
 Object.values(MK).forEach(m=>{m.h=Array(60).fill(m.p);m.d=0;m.c=[];m.n=0});
 function step(m){m.d=m.d*.8+(Math.random()-.5)*m.v;m.p=Math.max(.01,m.p*(1+m.d+(Math.random()-.5)*m.v));m.h.push(m.p);if(m.h.length>60)m.h.shift();
  m.n++;if(!m.c.length||m.n%5===1){const pv=m.c.length?m.c.at(-1).c:m.p;m.c.push({o:pv,h:Math.max(pv,m.p),l:Math.min(pv,m.p),c:m.p});if(m.c.length>40)m.c.shift()}
  else{const k=m.c.at(-1);k.c=m.p;k.h=Math.max(k.h,m.p);k.l=Math.min(k.l,m.p)}}
 Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
-const T={pos:[],hist:[],sel:'gold',seq:0};
+const T={bal:10000,pos:[],hist:[],sel:'gold',seq:0};
 const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
 function selT(k){T.sel=k;document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on2',b.dataset.k===k));drawTrade()}
-function openT(){const u=me(),amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value;
- if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);
- if(amt>u.bal)return toast('الرصيد المتاح في المحفظة لا يكفي',false);
- u.bal-=amt;
- S.log.push({u:u.id,d:today(),k:'حجز صفقة تداول',a:-amt});
- T.pos.push({id:++T.seq,a:T.sel,dir,amt,st:'pending',openAt:Date.now()+del*1000,dur});
- toast('تم تسجيل الصفقة وخصم مبلغها من المحفظة');
- drawTrade()}
+function openT(){const amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value;
+ if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);if(amt>T.bal)return toast('الرصيد التجريبي لا يكفي',false);
+ T.pos.push({id:++T.seq,a:T.sel,dir,amt,st:'pending',openAt:Date.now()+del*1000,dur});toast('تم تسجيل الصفقة التجريبية');drawTrade()}
 function closeT(id,auto){const x=T.pos.find(y=>y.id===id);if(!x)return;
- const u=me();if(!u)return;
- if(x.st==='open'){const pl=pnl(x),back=Math.max(0,x.amt+pl);
-  u.bal+=back;
-  S.log.push({u:u.id,d:today(),k:'تسوية صفقة تداول',a:back});
-  T.hist.unshift({a:x.a,dir:x.dir,amt:x.amt,pl,at:new Date().toLocaleTimeString('ar')});
-  T.hist.length=Math.min(T.hist.length,20)}
- else if(x.st==='pending'){u.bal+=x.amt;S.log.push({u:u.id,d:today(),k:'إلغاء صفقة تداول',a:x.amt})}
- T.pos=T.pos.filter(y=>y!==x);
- if(!auto)toast('تم إنهاء الصفقة');else save();
- drawTrade()}
+ if(x.st==='open'){const pl=pnl(x);T.bal+=Math.max(0,x.amt+pl);T.hist.unshift({a:x.a,dir:x.dir,amt:x.amt,pl,at:new Date().toLocaleTimeString('ar')});T.hist.length=Math.min(T.hist.length,20)}
+ T.pos=T.pos.filter(y=>y!==x);if(!auto)toast('تم إنهاء الصفقة');drawTrade()}
 function tick(){const now=Date.now();
  Object.values(MK).forEach(step);
  for(const x of T.pos.slice()){
-  if(x.st==='pending'&&now>=x.openAt){x.st='open';x.entry=MK[x.a].p;if(x.dur)x.closeAt=now+x.dur*1000}
+  if(x.st==='pending'&&now>=x.openAt){if(T.bal<x.amt){T.pos=T.pos.filter(y=>y!==x);toast('أُلغيت صفقة مؤجلة: الرصيد التجريبي لا يكفي',false);continue}T.bal-=x.amt;x.st='open';x.entry=MK[x.a].p;if(x.dur)x.closeAt=now+x.dur*1000}
   if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
-function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(me().bal);
+function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(T.bal);
  for(const k in MK){const m=MK[k],e=$('#pp_'+k);if(e){e.textContent=f2(m.p);e.style.color=m.h.at(-1)>=m.h.at(-2)?'var(--ok)':'var(--bad)'}}
  const cs=MK[T.sel].c,lo=Math.min(...cs.map(k=>k.l)),hi=Math.max(...cs.map(k=>k.h)),r=(hi-lo)||1,Y=v=>(114-(v-lo)/r*108).toFixed(1);
  $('#tch').innerHTML=cs.map((k,i)=>{const x=i*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
@@ -325,7 +361,7 @@ addEventListener('hashchange',render);
 /* بيانات JSONBin للتجربة فقط: لا ترفع هذا الملف في مستودع عام ولا تشاركه */
 const CFG={bin:'6af38d23ffd5d16053b7d22e',key:'$2a$10$UrOOuFAKOgrOtxgAXuhnYOnedwLGXP88RwiB.tFL1j6HOd5Bwe2Wm'};
 let LAST='',TM=null,ONLINE=false;
-const snap=()=>JSON.stringify({users:S.users,wd:S.wd,log:S.log,msgs:S.msgs,settings:S.settings,seq:S.seq,tasks:TASKS});
+const snap=()=>JSON.stringify({users:S.users,wd:S.wd,log:S.log,msgs:S.msgs,faq:S.faq,ann:S.ann,alog:S.alog,settings:S.settings,seq:S.seq,tasks:TASKS});
 let HDR='X-Master-Key';
 async function jb(m,b){for(const h of [HDR,HDR==='X-Master-Key'?'X-Access-Key':'X-Master-Key']){
  const r=await fetch('https://api.jsonbin.io/v3/b/'+CFG.bin+(m==='GET'?'/latest':''),{method:m,cache:'no-store',headers:{'Content-Type':'application/json','X-Bin-Meta':'false',[h]:CFG.key},body:b});
@@ -334,7 +370,7 @@ let PEND=false;
 function save(){if(!ONLINE)return;PEND=true;clearTimeout(TM);TM=setTimeout(async()=>{const x=snap();if(x===LAST){PEND=false;return}try{await jb('PUT',x);LAST=x}catch(e){toast('تعذّر حفظ البيانات في JSONBin',false)}PEND=false},1200)}
 async function boot(){
  if(CFG.bin&&CFG.key){try{const d=await jb('GET');
-  if(d&&Array.isArray(d.users)){S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];S.msgs=d.msgs||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}}
+  if(d&&Array.isArray(d.users)){S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];S.msgs=d.msgs||[];S.faq=d.faq||S.faq;S.ann=d.ann||[];S.alog=d.alog||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}}
   else if(!d||Object.keys(d).every(k=>k==='init'))await jb('PUT',snap());else throw new Error('الـ Bin يحتوي بيانات أخرى');
   LAST=snap();ONLINE=true;$('#dbs').textContent='● متصل بقاعدة البيانات';
   try{const u=localStorage.getItem('satr_u');if(u&&S.users.some(x=>x.id===u))S.user=u}catch(e){}}
@@ -343,14 +379,14 @@ async function boot(){
 let BUSY=false;
 async function pull(){if(!ONLINE||BUSY||PEND)return;BUSY=true;
  try{const d=await jb('GET'),before=snap();
-  if(d&&Array.isArray(d.users)){S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];S.msgs=d.msgs||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}}
+  if(d&&Array.isArray(d.users)){S.users=d.users;S.wd=d.wd||[];S.log=d.log||[];S.msgs=d.msgs||[];S.faq=d.faq||S.faq;S.ann=d.ann||[];S.alog=d.alog||[];Object.assign(S.settings,d.settings||{});S.seq=d.seq||S.seq;if(Array.isArray(d.tasks)){TASKS.length=0;TASKS.push(...d.tasks)}}
   if(snap()!==before){LAST=snap();refreshView()}}catch(e){}
  BUSY=false}
 function refreshView(){drawNav();const a=document.activeElement;
  if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.closest('#app')&&(a.value||a.tagName==='SELECT'))return;
  if([...document.querySelectorAll('#mx,[id^=r_]')].some(i=>i.value))return;
  const y=scrollY;render();scrollTo(0,y)}
-const LIVE=['support','admin','deposit','dash','wallet','history'];
+const LIVE=['orders','support','admin','deposit','dash','wallet','history'];
 setInterval(()=>{if(!document.hidden&&LIVE.includes((location.hash||'#home').slice(1)))pull()},15000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
 addEventListener('focus',pull);
