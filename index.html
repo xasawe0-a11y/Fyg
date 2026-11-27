@@ -184,7 +184,7 @@ trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجري�
 <option value="oil">نفط 🛢️</option>
 <option value="stk">سهم عشوائي من شركات عالمية 📈</option>
 </select>
-<div style="margin-top:12px"><div class="muted">السعر الحالي</div><div class="stat" id="selectedPrice" dir="ltr"></div><div class="muted" id="selectedName"></div></div>
+<div style="margin-top:12px"><div class="muted">السعر الحالي</div><div class="stat" id="selectedPrice" dir="ltr"></div><div class="muted" id="selectedName"></div><div class="muted" style="font-size:11px">الأسعار بالليرة السورية حسب سعر صرف USD/SYP المتاح. النفط غير مربوط حالياً بمصدر مباشر.</div></div>
 </div>
 <div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
@@ -283,7 +283,7 @@ async function delMsg(mid){if(window.DM!==mid){window.DM=mid;toast('اضغط «�
 async function delThread(uid){uid=S.admin?uid:'me';if(window.DT2!==uid){window.DT2=uid;toast('اضغط مرة ثانية لحذف المحادثة كاملة',false);S.admin?V.admin():V.support();return}window.DT2=null;await pull();
  const id=S.admin?uid:S.user;S.msgs=S.msgs.filter(m=>m.u!==id);
  toast('تم حذف المحادثة من الطرفين');drawNav();S.admin?V.admin():V.support()}
-const MK={gold:{n:'ذهب 🥇',p:1350000,v:.003},oil:{n:'نفط 🛢️',p:9500,v:.005},btc:{n:'بتكوين ₿',p:3400000000,v:.008},stk:{n:'أسهم شركات عالمية 📈',p:185000,v:.006}};
+const MK={gold:{n:'ذهب (PAXG) 🥇',p:1350000,v:.003,live:false,source:'PAXG/USDT'},oil:{n:'نفط 🛢️',p:9500,v:.005,live:false,source:'غير متصل'},btc:{n:'بتكوين ₿',p:3400000000,v:.008,live:false,source:'BTC/USDT'},stk:{n:'سهم آبل 📈',p:185000,v:.006,live:false,source:'AAPL'}};
 Object.values(MK).forEach(m=>{m.h=Array(60).fill(m.p);m.d=0;m.c=[];m.n=0});
 function step(m){
  if(!m.trendLeft){m.trend=(Math.random()<.5?-1:1);m.trendLeft=12+Math.floor(Math.random()*24)}
@@ -295,12 +295,66 @@ function step(m){
  if(!m.c.length||m.n%5===1){const pv=m.c.length?m.c.at(-1).c:m.p;m.c.push({o:pv,h:Math.max(pv,m.p),l:Math.min(pv,m.p),c:m.p});if(m.c.length>40)m.c.shift()}
  else{const k=m.c.at(-1);k.c=m.p;k.h=Math.max(k.h,m.p);k.l=Math.min(k.l,m.p)}
 }
+
+// أسعار السوق: بث عام للبتكوين وPAXG، وبث الأسهم عند توفره، مع تحويل USD إلى SYP.
+let USD_SYP=null, marketSockets=[];
+function pushLive(k,usd){
+ const m=MK[k]; if(!m||!Number.isFinite(usd)||usd<=0)return;
+ const value=USD_SYP?usd*USD_SYP:usd;
+ const prev=m.p; m.p=value; m.live=!!USD_SYP;
+ m.h.push(value);if(m.h.length>60)m.h.shift();
+ m.n++;
+ if(!m.c.length||m.n%5===1){const base=m.c.length?m.c.at(-1).c:prev;m.c.push({o:base,h:Math.max(base,value),l:Math.min(base,value),c:value});if(m.c.length>40)m.c.shift()}
+ else{const candle=m.c.at(-1);candle.c=value;candle.h=Math.max(candle.h,value);candle.l=Math.min(candle.l,value)}
+}
+async function loadFx(){
+ try{
+  const r=await fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store'});
+  if(!r.ok)throw Error('FX');
+  const j=await r.json(),rate=Number(j&&j.rates&&j.rates.SYP);
+  if(rate>0){USD_SYP=rate;window.SATR_FX_UPDATED=Date.now()}
+ }catch(e){console.warn('تعذر جلب سعر صرف USD/SYP',e)}
+}
+function connectCrypto(){
+ try{
+  const ws=new WebSocket('wss://data-stream.binance.vision/stream?streams=btcusdt@ticker/paxgusdt@ticker');
+  marketSockets.push(ws);
+  ws.onmessage=e=>{
+   try{
+    const d=JSON.parse(e.data),x=d.data||d;
+    if(x.s==='BTCUSDT')pushLive('btc',Number(x.c));
+    if(x.s==='PAXGUSDT')pushLive('gold',Number(x.c));
+   }catch(_){}
+  };
+  ws.onclose=()=>setTimeout(connectCrypto,5000);
+  ws.onerror=()=>{try{ws.close()}catch(_){}};
+ }catch(e){setTimeout(connectCrypto,8000)}
+}
+function connectEquities(){
+ try{
+  const ws=new WebSocket('wss://nbstream.binance.com/equity/ws/price');
+  marketSockets.push(ws);
+  ws.onmessage=e=>{
+   try{
+    const raw=JSON.parse(e.data),arr=Array.isArray(raw)?raw:(raw.data?(Array.isArray(raw.data)?raw.data:[raw.data]):[raw]);
+    const item=arr.find(x=>(x.s||x.symbol)==='AAPL');
+    if(item)pushLive('stk',Number(item.p||item.price||item.c));
+   }catch(_){}
+  };
+  ws.onclose=()=>setTimeout(connectEquities,10000);
+  ws.onerror=()=>{try{ws.close()}catch(_){}};
+ }catch(e){setTimeout(connectEquities,10000)}
+}
+loadFx().then(()=>{connectCrypto();connectEquities()});
+setInterval(loadFx,15*60*1000);
+
 Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
 const stockChoices=['آبل','مايكروسوفت','إنفيديا','أمازون','تسلا','كوكاكولا','ميتا'];MK.stk.n='سهم '+stockChoices[Math.floor(Math.random()*stockChoices.length)]+' (عشوائي) 📈';const T={pos:[],hist:[],sel:'gold',seq:0};
 const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:0,minimumFractionDigits:0});
 const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
 function selT(k){if(!MK[k])return;T.sel=k;const select=$('#marketSelect');if(select)select.value=k;drawTrade()}
 function openT(){const u=me(),amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value||10;
+ if(!MK[T.sel].live)return toast('سعر هذا الأصل غير متصل بمصدر مباشر حالياً؛ لم يتم فتح الصفقة',false);
  if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);
  if(amt>u.bal)return toast('الرصيد المتاح في المحفظة لا يكفي',false);
  u.bal-=amt;
@@ -320,13 +374,13 @@ function closeT(id,auto){const x=T.pos.find(y=>y.id===id);if(!x)return;
  if(!auto)toast('تم إنهاء الصفقة');else save();
  drawTrade()}
 function tick(){const now=Date.now();
- Object.values(MK).forEach(step);
+ Object.values(MK).forEach(m=>{if(!m.live)step(m)});
  for(const x of T.pos.slice()){
   if(x.st==='pending'&&now>=x.openAt){x.st='open';x.entry=MK[x.a].p;x.closeAt=now+(x.dur||10)*1000}
   if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
 function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(me().bal)+' ل.س';
- const chosen=MK[T.sel],priceEl=$('#selectedPrice'),nameEl=$('#selectedName');if(priceEl){priceEl.textContent=f2(chosen.p)+' ل.س';priceEl.style.color=chosen.h.at(-1)>=chosen.h.at(-2)?'var(--ok)':'var(--bad)'}if(nameEl)nameEl.textContent=chosen.n;
+ const chosen=MK[T.sel],priceEl=$('#selectedPrice'),nameEl=$('#selectedName');if(priceEl){priceEl.textContent=f2(chosen.p)+' ل.س';priceEl.style.color=chosen.h.at(-1)>=chosen.h.at(-2)?'var(--ok)':'var(--bad)'}if(nameEl)nameEl.textContent=chosen.n+' · '+(chosen.live?'سعر سوق مباشر':'بانتظار/غير متاح مصدر مباشر')+(USD_SYP?' · تحويل USD/SYP محدث':' · تعذر تحديث سعر الصرف');
  const cs=MK[T.sel].c,lo=Math.min(...cs.map(k=>k.l)),hi=Math.max(...cs.map(k=>k.h)),r=(hi-lo)||1,Y=v=>(114-(v-lo)/r*108).toFixed(1);
  $('#tch').innerHTML=cs.map((k,i)=>{const x=i*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
  const sig=T.pos.map(x=>x.id+x.st).join();
