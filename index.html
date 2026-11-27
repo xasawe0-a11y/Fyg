@@ -175,8 +175,7 @@ withdraw(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><form cl
 <p><button class="btn" style="width:100%">طلب سحب الأرباح</button></p></form></section></div>`},
 history(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><h2>سجل العمليات</h2><div class="card scroll"><table><tr><th>التاريخ</th><th>العملية</th><th>المبلغ</th></tr>${S.log.filter(l=>l.u===u.id).reverse().map(l=>`<tr><td>${l.d}</td><td>${l.k}</td><td style="color:${l.a<0?'var(--bad)':'var(--ok)'}">${fmt(l.a)}</td></tr>`).join('')||'<tr><td colspan=3>لا عمليات بعد. أنجز مهمتك الأولى.</td></tr>'}</table></div></section></div>`},
 trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجريبي</h2>
-<div class="note">⚠️ هذه محاكاة تعليمية: الأسعار عشوائية وليست أسعار السوق الحقيقية، والرصيد التجريبي منفصل تماماً عن محفظتك، لا يُسحب ولا يؤثر على رصيدك الحقيقي.</div>
-<div class="card"><div class="muted">الرصيد التجريبي</div><div class="stat" id="tbal"></div><button class="btn alt sm" onclick="T.bal=10000;T.pos=[];T.hist=[];V.trade()">إعادة ضبط</button></div>
+<div class="card"><div class="muted">رصيد المحفظة المتاح</div><div class="stat" id="tbal"></div></div>
 <div class="grid" style="margin:16px 0">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')">${m.n}<br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div>
 <div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
@@ -281,23 +280,36 @@ function step(m){m.d=m.d*.8+(Math.random()-.5)*m.v;m.p=Math.max(.01,m.p*(1+m.d+(
  m.n++;if(!m.c.length||m.n%5===1){const pv=m.c.length?m.c.at(-1).c:m.p;m.c.push({o:pv,h:Math.max(pv,m.p),l:Math.min(pv,m.p),c:m.p});if(m.c.length>40)m.c.shift()}
  else{const k=m.c.at(-1);k.c=m.p;k.h=Math.max(k.h,m.p);k.l=Math.min(k.l,m.p)}}
 Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
-const T={bal:10000,pos:[],hist:[],sel:'gold',seq:0};
+const T={pos:[],hist:[],sel:'gold',seq:0};
 const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
 function selT(k){T.sel=k;document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on2',b.dataset.k===k));drawTrade()}
-function openT(){const amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value;
- if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);if(amt>T.bal)return toast('الرصيد التجريبي لا يكفي',false);
- T.pos.push({id:++T.seq,a:T.sel,dir,amt,st:'pending',openAt:Date.now()+del*1000,dur});toast('تم تسجيل الصفقة التجريبية');drawTrade()}
+function openT(){const u=me(),amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value;
+ if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);
+ if(amt>u.bal)return toast('الرصيد المتاح في المحفظة لا يكفي',false);
+ u.bal-=amt;
+ S.log.push({u:u.id,d:today(),k:'حجز صفقة تداول',a:-amt});
+ T.pos.push({id:++T.seq,a:T.sel,dir,amt,st:'pending',openAt:Date.now()+del*1000,dur});
+ toast('تم تسجيل الصفقة وخصم مبلغها من المحفظة');
+ drawTrade()}
 function closeT(id,auto){const x=T.pos.find(y=>y.id===id);if(!x)return;
- if(x.st==='open'){const pl=pnl(x);T.bal+=Math.max(0,x.amt+pl);T.hist.unshift({a:x.a,dir:x.dir,amt:x.amt,pl,at:new Date().toLocaleTimeString('ar')});T.hist.length=Math.min(T.hist.length,20)}
- T.pos=T.pos.filter(y=>y!==x);if(!auto)toast('تم إنهاء الصفقة');drawTrade()}
+ const u=me();if(!u)return;
+ if(x.st==='open'){const pl=pnl(x),back=Math.max(0,x.amt+pl);
+  u.bal+=back;
+  S.log.push({u:u.id,d:today(),k:'تسوية صفقة تداول',a:back});
+  T.hist.unshift({a:x.a,dir:x.dir,amt:x.amt,pl,at:new Date().toLocaleTimeString('ar')});
+  T.hist.length=Math.min(T.hist.length,20)}
+ else if(x.st==='pending'){u.bal+=x.amt;S.log.push({u:u.id,d:today(),k:'إلغاء صفقة تداول',a:x.amt})}
+ T.pos=T.pos.filter(y=>y!==x);
+ if(!auto)toast('تم إنهاء الصفقة');else save();
+ drawTrade()}
 function tick(){const now=Date.now();
  Object.values(MK).forEach(step);
  for(const x of T.pos.slice()){
-  if(x.st==='pending'&&now>=x.openAt){if(T.bal<x.amt){T.pos=T.pos.filter(y=>y!==x);toast('أُلغيت صفقة مؤجلة: الرصيد التجريبي لا يكفي',false);continue}T.bal-=x.amt;x.st='open';x.entry=MK[x.a].p;if(x.dur)x.closeAt=now+x.dur*1000}
+  if(x.st==='pending'&&now>=x.openAt){x.st='open';x.entry=MK[x.a].p;if(x.dur)x.closeAt=now+x.dur*1000}
   if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
-function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(T.bal);
+function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(me().bal);
  for(const k in MK){const m=MK[k],e=$('#pp_'+k);if(e){e.textContent=f2(m.p);e.style.color=m.h.at(-1)>=m.h.at(-2)?'var(--ok)':'var(--bad)'}}
  const cs=MK[T.sel].c,lo=Math.min(...cs.map(k=>k.l)),hi=Math.max(...cs.map(k=>k.h)),r=(hi-lo)||1,Y=v=>(114-(v-lo)/r*108).toFixed(1);
  $('#tch').innerHTML=cs.map((k,i)=>{const x=i*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
