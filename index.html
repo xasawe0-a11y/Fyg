@@ -200,6 +200,7 @@ trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجري�
 <div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
 <label>مبلغ الصفقة بالدولار ($)</label><input id="ta" type="number" min="1" value="1000">
+<label>الرافعة المالية</label><select id="tlv"><option value="1">×1 (بدون رافعة)</option><option value="5">×5</option><option value="10" selected>×10</option><option value="25">×25</option><option value="50">×50</option><option value="100">×100</option></select><div class="muted">الرافعة تضخّم الربح والخسارة معاً، وتُصفّى الصفقة تلقائياً إذا بلغت الخسارة كامل المبلغ.</div>
 <label>وقت فتح الصفقة</label><select id="tdl"><option value="0">الآن</option><option value="15">بعد 15 ثانية</option><option value="60">بعد دقيقة</option></select>
 <label>وقت الإغلاق</label><select id="tdu"><option value="0">يدوي</option><option value="30">بعد 30 ثانية</option><option value="60">بعد دقيقة</option><option value="300">بعد 5 دقائق</option></select>
 <p><button class="btn" style="width:100%" onclick="openT()">فتح الصفقة</button></p></div>
@@ -333,12 +334,12 @@ function push(m){m.h.push(m.p);if(m.h.length>60)m.h.shift();
 Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
 const T={bal:10000,pos:[],hist:[],sel:'gold',seq:0};
 const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
-const usd=n=>(n<0?'-':'')+'$'+f2(Math.abs(n));
-const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
+const usd=n=>(n<0?'-':'')+'$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:Math.abs(n)<1?4:2});
+const pnl=x=>x.amt*(x.lev||1)*x.dir*(MK[x.a].p-x.entry)/x.entry;
 function selT(k){T.sel=k;document.querySelectorAll('.tb').forEach(b=>{const on=b.dataset.k===k;b.classList.toggle('on2',on);if(on)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})});drawTrade()}
 function openT(){const amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value;
  if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);if(amt>T.bal)return toast('الرصيد التجريبي لا يكفي',false);
- T.pos.push({id:++T.seq,a:T.sel,dir,amt,st:'pending',openAt:Date.now()+del*1000,dur});toast('تم تسجيل الصفقة التجريبية');drawTrade()}
+ T.pos.push({id:++T.seq,a:T.sel,dir,amt,lev:+$('#tlv').value||1,st:'pending',openAt:Date.now()+del*1000,dur});toast('تم تسجيل الصفقة التجريبية');drawTrade()}
 function closeT(id,auto){const x=T.pos.find(y=>y.id===id);if(!x)return;
  if(x.st==='open'){const pl=pnl(x);T.bal+=Math.max(0,x.amt+pl);T.hist.unshift({a:x.a,dir:x.dir,amt:x.amt,pl,at:new Date().toLocaleTimeString('ar')});T.hist.length=Math.min(T.hist.length,20)}
  T.pos=T.pos.filter(y=>y!==x);if(!auto)toast('تم إنهاء الصفقة');drawTrade()}
@@ -351,6 +352,7 @@ function tick(){const now=Date.now();
  Object.values(MK).forEach(m=>Date.now()-(m.t||0)<8000?push(m):step(m));
  for(const x of T.pos.slice()){
   if(x.st==='pending'&&now>=x.openAt){if(T.bal<x.amt){T.pos=T.pos.filter(y=>y!==x);toast('أُلغيت صفقة مؤجلة: الرصيد التجريبي لا يكفي',false);continue}T.bal-=x.amt;x.st='open';x.entry=MK[x.a].p;if(x.dur)x.closeAt=now+x.dur*1000}
+  if(x.st==='open'&&pnl(x)<=-x.amt){closeT(x.id,true);toast('تمت تصفية الصفقة: بلغت الخسارة كامل المبلغ',false);continue}
   if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
 function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=usd(T.bal);
@@ -361,9 +363,9 @@ function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=usd(T.bal);
  const cs=MK[T.sel].c,lo=Math.min(...cs.map(k=>k.l)),hi=Math.max(...cs.map(k=>k.h)),r=(hi-lo)||1,Y=v=>(114-(v-lo)/r*108).toFixed(1);
  $('#tch').innerHTML=cs.map((k,i)=>{const x=i*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
  const sig=T.pos.map(x=>x.id+x.st).join();
- if(sig!==T.sig){T.sig=sig;$('#tpos').innerHTML=T.pos.map(x=>`<div class="card" style="margin-bottom:8px"><div class="task"><div><b>${MK[x.a].n}</b> · ${x.dir>0?'شراء':'بيع'} · ${usd(x.amt)}<br><span id="pl_${x.id}"></span></div><button class="btn bad sm" onclick="closeT(${x.id})">${x.st==='pending'?'إلغاء':'إغلاق'}</button></div></div>`).join('')||'<p class="muted">لا صفقات مفتوحة.</p>'}
+ if(sig!==T.sig){T.sig=sig;$('#tpos').innerHTML=T.pos.map(x=>`<div class="card" style="margin-bottom:8px"><div class="task"><div><b>${MK[x.a].n}</b> · ${x.dir>0?'شراء':'بيع'} · ${usd(x.amt)} · ×${x.lev||1}<br><span id="pl_${x.id}"></span></div><button class="btn bad sm" onclick="closeT(${x.id})">${x.st==='pending'?'إلغاء':'إغلاق'}</button></div></div>`).join('')||'<p class="muted">لا صفقات مفتوحة.</p>'}
  T.pos.forEach(x=>{const e=$('#pl_'+x.id);if(!e)return;
-  if(x.st==='open'){const pl=pnl(x);e.textContent=(pl>=0?'+':'')+usd(pl)+(x.closeAt?' · تُغلق بعد '+Math.max(0,Math.ceil((x.closeAt-Date.now())/1000))+' ث':'');e.style.color=pl>=0?'var(--ok)':'var(--bad)'}
+  if(x.st==='open'){const pl=pnl(x);e.textContent=(pl>=0?'+':'')+usd(pl)+' ('+(pl>=0?'+':'')+(pl/x.amt*100).toFixed(2)+'%)'+(x.closeAt?' · تُغلق بعد '+Math.max(0,Math.ceil((x.closeAt-Date.now())/1000))+' ث':'');e.style.color=pl>=0?'var(--ok)':'var(--bad)'}
   else e.textContent='تُفتح بعد '+Math.max(0,Math.ceil((x.openAt-Date.now())/1000))+' ث'});
  if(T.hsig!==T.hist.length){T.hsig=T.hist.length;$('#thist').innerHTML=T.hist.length?'<div class="card scroll"><table>'+T.hist.map(x=>`<tr><td>${x.at}</td><td>${MK[x.a].n}</td><td>${x.dir>0?'شراء':'بيع'}</td><td style="color:${x.pl>=0?'var(--ok)':'var(--bad)'}">${x.pl>=0?'+':''}${usd(x.pl)}</td></tr>`).join('')+'</table></div>':'<p class="muted">لا صفقات مغلقة بعد.</p>'}}
 setInterval(tick,1000);livePrices();setInterval(livePrices,2000);loadStats();setInterval(loadStats,20000);
