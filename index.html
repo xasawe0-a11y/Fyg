@@ -64,6 +64,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px;text-
 #toast.show{transform:none}
 footer{background:var(--navy);color:#9FB0C8;padding:24px 0;font-size:14px;margin-top:32px}
 @media(max-width:720px){.hero .wrap{grid-template-columns:1fr}header .wrap{flex-wrap:wrap}}
+.market-name{display:block;font-size:15px;font-weight:700;margin-bottom:7px;color:var(--text)}
 </style>
 </head>
 <body>
@@ -175,12 +176,12 @@ withdraw(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><form cl
 history(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><h2>سجل العمليات</h2><div class="card scroll"><table><tr><th>التاريخ</th><th>العملية</th><th>المبلغ</th></tr>${S.log.filter(l=>l.u===u.id).reverse().map(l=>`<tr><td>${l.d}</td><td>${l.k}</td><td style="color:${l.a<0?'var(--bad)':'var(--ok)'}">${fmt(l.a)}</td></tr>`).join('')||'<tr><td colspan=3>لا عمليات بعد. أنجز مهمتك الأولى.</td></tr>'}</table></div></section></div>`},
 trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجريبي</h2>
 <div class="card"><div class="muted">الرصيد المتاح في المحفظة (ليرة سورية)</div><div class="stat" id="tbal"></div><div class="muted">جميع الأسعار والمبالغ بالليرة السورية · أسعار محاكاة وليست أسعار سوق حقيقية</div></div>
-<div class="grid" style="margin:16px 0">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')">${m.n}<br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div>
+<div class="grid" style="margin:16px 0">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')"><span class="market-name">${m.n}</span><br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div>
 <div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
 <label>مبلغ الصفقة (ل.س)</label><input id="ta" type="number" min="1" value="100000">
 <label>وقت فتح الصفقة</label><select id="tdl"><option value="0">الآن</option><option value="15">بعد 15 ثانية</option><option value="60">بعد دقيقة</option></select>
-<div class="note">مدة كل صفقة 10 ثوانٍ، ثم تُغلق تلقائياً وتُسوّى قيمتها مع الربح أو الخسارة.</div>
+<label>مدة الصفقة</label><select id="tdu"><option value="10">10 ثوانٍ</option><option value="30">30 ثانية</option><option value="60">دقيقة واحدة</option><option value="120">دقيقتان</option><option value="180">3 دقائق</option><option value="240">4 دقائق</option><option value="300">5 دقائق</option></select><div class="note">تُغلق الصفقة تلقائياً عند انتهاء المدة المحددة.</div>
 <p><button class="btn" style="width:100%" onclick="openT()">فتح الصفقة</button></p></div>
 <h2 style="margin-top:24px">الصفقات</h2><div id="tpos"></div><h2 style="margin-top:24px">السجل</h2><div id="thist"></div></section></div>`;T.sig=T.hsig=null;drawTrade()},
 support(){const u=me(),th=S.msgs.filter(m=>m.u===u.id),fresh=new Set(th.filter(m=>m.from==='admin'&&!m.read).map(m=>m.id));
@@ -290,7 +291,7 @@ const T={pos:[],hist:[],sel:'gold',seq:0};
 const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
 function selT(k){T.sel=k;document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on2',b.dataset.k===k));drawTrade()}
-function openT(){const u=me(),amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=10;
+function openT(){const u=me(),amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value||10;
  if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);
  if(amt>u.bal)return toast('الرصيد المتاح في المحفظة لا يكفي',false);
  u.bal-=amt;
@@ -312,7 +313,7 @@ function closeT(id,auto){const x=T.pos.find(y=>y.id===id);if(!x)return;
 function tick(){const now=Date.now();
  Object.values(MK).forEach(step);
  for(const x of T.pos.slice()){
-  if(x.st==='pending'&&now>=x.openAt){x.st='open';x.entry=MK[x.a].p;x.closeAt=now+10000}
+  if(x.st==='pending'&&now>=x.openAt){x.st='open';x.entry=MK[x.a].p;x.closeAt=now+(x.dur||10)*1000}
   if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
 function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(me().bal)+' ل.س';
@@ -322,7 +323,7 @@ function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(me().bal)+'
  const sig=T.pos.map(x=>x.id+x.st).join();
  if(sig!==T.sig){T.sig=sig;$('#tpos').innerHTML=T.pos.map(x=>`<div class="card" style="margin-bottom:8px"><div class="task"><div><b>${MK[x.a].n}</b> · ${x.dir>0?'شراء':'بيع'} · ${f2(x.amt)} ل.س<br><span id="pl_${x.id}"></span></div><span class="tag t-w">${x.st==='pending'?'بانتظار الفتح':'تُغلق تلقائياً'}</span></div></div>`).join('')||'<p class="muted">لا صفقات مفتوحة.</p>'}
  T.pos.forEach(x=>{const e=$('#pl_'+x.id);if(!e)return;
-  if(x.st==='open'){const pl=pnl(x);e.textContent=(pl>=0?'+':'')+f2(pl)+' ل.س'+(x.closeAt?' · تُغلق بعد '+Math.max(0,Math.ceil((x.closeAt-Date.now())/1000))+' ث':'');e.style.color=pl>=0?'var(--ok)':'var(--bad)'}
+  if(x.st==='open'){const pl=pnl(x);e.textContent=(pl>=0?'+':'')+f2(pl)+' ل.س · المتبقي '+Math.max(0,Math.ceil((x.closeAt-Date.now())/1000))+' ثانية';e.style.color=pl>=0?'var(--ok)':'var(--bad)'}
   else e.textContent='تُفتح بعد '+Math.max(0,Math.ceil((x.openAt-Date.now())/1000))+' ث'});
  if(T.hsig!==T.hist.length){T.hsig=T.hist.length;$('#thist').innerHTML=T.hist.length?'<div class="card scroll"><table>'+T.hist.map(x=>`<tr><td>${x.at}</td><td>${MK[x.a].n}</td><td>${x.dir>0?'شراء':'بيع'}</td><td style="color:${x.pl>=0?'var(--ok)':'var(--bad)'}">${x.pl>=0?'+':''}${f2(x.pl)} ل.س</td></tr>`).join('')+'</table></div>':'<p class="muted">لا صفقات مغلقة بعد.</p>'}}
 setInterval(tick,1000);
