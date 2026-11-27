@@ -67,6 +67,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px;text-
 @media (prefers-reduced-motion:reduce){#fab{animation:none}}
 .strip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 10px;margin:16px 0;-webkit-overflow-scrolling:touch}.strip .tb{flex:0 0 auto;min-width:136px;scroll-snap-align:center}
 .tb{text-align:center;line-height:1.5}.tb.on2{background:var(--gold);color:var(--navy)}
+.sides{display:flex;gap:8px}.sides .btn{flex:1;opacity:.5;border:2px solid transparent}.sides .btn.on{opacity:1;border-color:#fff6}
+.strip2{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px}.strip2 .btn{flex:0 0 auto}.tf.on2{background:var(--gold);color:var(--navy)}
 #toast{position:fixed;inset-inline:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:420px;margin:auto;padding:12px 16px;border-radius:12px;color:#fff;font-weight:700;transform:translateY(150%);transition:transform .3s;z-index:20}
 #toast.show{transform:none}
 footer{background:var(--navy);color:#9FB0C8;padding:24px 0;font-size:14px;margin-top:32px}
@@ -193,18 +195,26 @@ $('#app').innerHTML=`<div class="wrap"><section><h2>طلباتي</h2>
 <div><span class="tag ${ST[w.st][1]}">${ST[w.st][0]}</span>${fresh.has(w.id)?' <span class="tag t-bad">جديد</span>':''}</div></div></div>`).join('')||'<p class="muted">لا طلبات سحب بعد.</p>'}
 <h3 style="margin-top:24px">إشعارات الشحن</h3>${ch.map(m=>{const rp=S.msgs.some(a=>a.u===u.id&&a.from==='admin'&&+a.id.slice(1)>+m.id.slice(1));return `<div class="card" style="margin-bottom:10px"><div class="task"><div><span class="muted">${m.d}</span><p>${esc(m.text)}</p></div><span class="tag ${rp?'t-ok':'t-w'}">${rp?'تم الرد من الدعم':'بانتظار الدعم'}</span></div></div>`}).join('')||'<p class="muted">لم ترسل إشعار شحن بعد.</p>'}
 <p class="muted">ردود الدعم تجدها في صفحة «الدعم».</p></section></div>`},
-trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجريبي</h2>
-<div class="note">⚠️ تداول تجريبي برصيد افتراضي منفصل تماماً عن محفظتك، لا يُسحب ولا يؤثر على رصيدك الحقيقي. الأسعار حقيقية ومباشرة عند توفرها، وإلا تُستخدم محاكاة عشوائية يوضحها الشريط تحت الرسم.</div>
-<div class="card"><div class="muted">الرصيد التجريبي (دولار افتراضي)</div><div class="stat" id="tbal"></div><button class="btn alt sm" onclick="T.bal=10000;T.pos=[];T.hist=[];V.trade()">إعادة ضبط</button></div>
-<div class="strip" role="listbox" aria-label="اختر الأصل">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')">${m.n}<br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div><div id="tinfo" class="card" style="margin-bottom:16px"></div>
-<div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
-<label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
-<label>مبلغ الصفقة بالدولار ($)</label><input id="ta" type="number" min="1" value="1000">
-<label>الرافعة المالية</label><select id="tlv"><option value="1">×1 (بدون رافعة)</option><option value="5">×5</option><option value="10" selected>×10</option><option value="25">×25</option><option value="50">×50</option><option value="100">×100</option></select><div class="muted">الرافعة تضخّم الربح والخسارة معاً، وتُصفّى الصفقة تلقائياً إذا بلغت الخسارة كامل المبلغ.</div>
-<label>وقت فتح الصفقة</label><select id="tdl"><option value="0">الآن</option><option value="15">بعد 15 ثانية</option><option value="60">بعد دقيقة</option></select>
-<label>وقت الإغلاق</label><select id="tdu"><option value="0">يدوي</option><option value="30">بعد 30 ثانية</option><option value="60">بعد دقيقة</option><option value="300">بعد 5 دقائق</option></select>
+trade(){restoreT();$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجريبي</h2>
+<div class="note">⚠️ تداول تجريبي برصيد افتراضي بالدولار، منفصل تماماً عن محفظتك ولا يُسحب. الأسعار حقيقية ومباشرة، وإذا تعذّر جلبها تتوقف الصفقات. الصفقات لا تُنفَّذ في أي سوق، وتشمل عمولة افتراضية 0.04٪ على الفتح والإغلاق. تُحفظ حالة حسابك التجريبي على هذا الجهاز.</div>
+<div class="card"><div class="grid" id="tacc" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))"></div><p style="margin:10px 0 0"><button class="btn alt sm" onclick="resetT()">إعادة ضبط الحساب التجريبي</button></p></div>
+<div class="strip" role="listbox" aria-label="اختر الأصل">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')">${m.n}<br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div>
+<div id="tinfo" class="card" style="margin-bottom:16px"></div>
+<div class="card"><div class="strip2">${Object.entries(TF).map(([k,v])=>`<button class="btn alt sm tf ${k===T.tf?'on2':''}" data-k="${k}" onclick="setTF('${k}')">${v[0]}</button>`).join('')}</div>
+<svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:220px"></svg><div class="muted" id="tcap"></div></div>
+<div class="card" style="margin-top:16px"><h3 style="margin:0 0 8px">فتح صفقة</h3>
+<div class="sides"><button class="btn ok sd ${T.side>0?'on':''}" data-s="1" onclick="setSide(1)">شراء ▲</button><button class="btn bad sd ${T.side<0?'on':''}" data-s="-1" onclick="setSide(-1)">بيع ▼</button></div>
+<label>مبلغ الصفقة (الهامش) بالدولار ($)</label><input id="ta" type="number" min="1" value="1000" oninput="drawSum()">
+<div class="strip2" style="margin-top:6px">${[25,50,75,100].map(q=>`<button class="btn alt sm" onclick="qa(${q/100})">${q}٪</button>`).join('')}</div>
+<label>الرافعة المالية</label><select id="tlv" onchange="drawSum()"><option value="1">×1 (بدون رافعة)</option><option value="5">×5</option><option value="10" selected>×10</option><option value="25">×25</option><option value="50">×50</option><option value="100">×100</option></select>
+<label>جني الأرباح TP (٪ من المبلغ، اختياري)</label><input id="ttp" type="number" min="0" placeholder="مثال: 50">
+<label>وقف الخسارة SL (٪ من المبلغ، اختياري)</label><input id="tsl" type="number" min="0" max="100" placeholder="مثال: 30">
+<label>وقت فتح الصفقة</label><select id="tdl"><option value="0">الآن</option><option value="15">بعد 15 ثانية</option><option value="60">بعد دقيقة</option><option value="300">بعد 5 دقائق</option></select>
+<label>وقت الإغلاق</label><select id="tdu"><option value="0">يدوي</option><option value="30">بعد 30 ثانية</option><option value="60">بعد دقيقة</option><option value="300">بعد 5 دقائق</option><option value="900">بعد 15 دقيقة</option></select>
+<div id="tsum" class="note" style="margin-top:12px"></div>
 <p><button class="btn" style="width:100%" onclick="openT()">فتح الصفقة</button></p></div>
-<h2 style="margin-top:24px">الصفقات</h2><div id="tpos"></div><h2 style="margin-top:24px">السجل</h2><div id="thist"></div></section></div>`;T.sig=T.hsig=null;drawTrade()},
+<h3 style="margin-top:24px">الصفقات <button class="btn bad sm" id="tca" onclick="closeAll()" hidden>إغلاق الكل</button></h3><div id="tpos"></div>
+<h3 style="margin-top:24px">سجل الصفقات</h3><div id="thist"></div></section></div>`;T.sig=T.hsig=null;loadK(MK[T.sel],T.tf);drawTrade()},
 support(){const u=me(),th=S.msgs.filter(m=>m.u===u.id),fresh=new Set(th.filter(m=>m.from==='admin'&&!m.read).map(m=>m.id));
 if(fresh.size){th.forEach(m=>{if(fresh.has(m.id))m.read=true});save();drawNav()}
 $('#app').innerHTML=`<div class="wrap"><section><div class="card form" style="max-width:520px"><h2>مراسلة الدعم</h2>
@@ -325,50 +335,89 @@ async function delMsg(mid){if(window.DM!==mid){window.DM=mid;toast('اضغط «�
 async function delThread(uid){uid=S.admin?uid:'me';if(window.DT2!==uid){window.DT2=uid;toast('اضغط مرة ثانية لحذف المحادثة كاملة',false);S.admin?V.admin():V.support();return}window.DT2=null;await pull();
  const id=S.admin?uid:S.user;S.msgs=S.msgs.filter(m=>m.u!==id);
  toast('تم حذف المحادثة من الطرفين');drawNav();S.admin?V.admin():V.support()}
-const MK={gold:{n:'ذهب 🥇',s:'XAUUSDT',p:2650,v:.004},oil:{n:'نفط 🛢️',s:'CLUSDT',p:75,v:.006},btc:{n:'بتكوين ₿',s:'BTCUSDT',p:95000,v:.009},stk:{n:'سهم تسلا 📈',s:'TSLAUSDT',p:350,v:.012}};
-Object.values(MK).forEach(m=>{m.h=Array(60).fill(m.p);m.d=0;m.c=[];m.n=0});
-function step(m){m.d=m.d*.8+(Math.random()-.5)*m.v;m.p=Math.max(.01,m.p*(1+m.d+(Math.random()-.5)*m.v));push(m)}
-function push(m){m.h.push(m.p);if(m.h.length>60)m.h.shift();
- m.n++;if(!m.c.length||m.n%5===1){const pv=m.c.length?m.c.at(-1).c:m.p;m.c.push({o:pv,h:Math.max(pv,m.p),l:Math.min(pv,m.p),c:m.p});if(m.c.length>40)m.c.shift()}
- else{const k=m.c.at(-1);k.c=m.p;k.h=Math.max(k.h,m.p);k.l=Math.min(k.l,m.p)}}
-Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
-const T={bal:10000,pos:[],hist:[],sel:'gold',seq:0};
+const MK={gold:{n:'ذهب 🥇',s:'XAUUSDT',p:2650,v:.0006},oil:{n:'نفط 🛢️',s:'CLUSDT',p:75,v:.001},btc:{n:'بتكوين ₿',s:'BTCUSDT',p:95000,v:.0015},stk:{n:'سهم تسلا 📈',s:'TSLAUSDT',p:350,v:.002}};
+Object.values(MK).forEach(m=>{m.h=[m.p];m.d=0;m.k={}});
+const TF={'1m':['1 د',60],'5m':['5 د',300],'15m':['15 د',900],'1h':['1 س',3600]};
+const FEE=.0004,WHY={manual:'يدوي',tp:'جني أرباح',sl:'وقف خسارة',liq:'تصفية',timer:'مؤقت'};
+const T={bal:10000,pos:[],hist:[],sel:'gold',seq:0,tf:'1m',side:1,uid:null};
 const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const usd=n=>(n<0?'-':'')+'$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:Math.abs(n)<1?4:2});
+const live=m=>Date.now()-(m.t||0)<8000;
 const pnl=x=>x.amt*(x.lev||1)*x.dir*(MK[x.a].p-x.entry)/x.entry;
-function selT(k){T.sel=k;document.querySelectorAll('.tb').forEach(b=>{const on=b.dataset.k===k;b.classList.toggle('on2',on);if(on)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})});drawTrade()}
-function openT(){const amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value;
- if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);if(amt>T.bal)return toast('الرصيد التجريبي لا يكفي',false);
- T.pos.push({id:++T.seq,a:T.sel,dir,amt,lev:+$('#tlv').value||1,st:'pending',openAt:Date.now()+del*1000,dur});toast('تم تسجيل الصفقة التجريبية');drawTrade()}
-function closeT(id,auto){const x=T.pos.find(y=>y.id===id);if(!x)return;
- if(x.st==='open'){const pl=pnl(x);T.bal+=Math.max(0,x.amt+pl);T.hist.unshift({a:x.a,dir:x.dir,amt:x.amt,pl,at:new Date().toLocaleTimeString('ar')});T.hist.length=Math.min(T.hist.length,20)}
- T.pos=T.pos.filter(y=>y!==x);if(!auto)toast('تم إنهاء الصفقة');drawTrade()}
+const roeP=(x,r)=>x.entry*(1+x.dir*r/(x.lev||1));
+function push(m){m.h.push(m.p);if(m.h.length>1200)m.h.shift()}
+function step(m){m.d=m.d*.8+(Math.random()-.5)*m.v;m.p=Math.max(.01,m.p*(1+m.d+(Math.random()-.5)*m.v));push(m)}
+Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
+function tickCandles(m){const per=5,h=m.h,o=[];for(let i=h.length;i>0&&o.length<40;i-=per){const g=h.slice(Math.max(0,i-per),i);o.unshift({o:g[0],h:Math.max(...g),l:Math.min(...g),c:g[g.length-1]})}return o}
+function persistT(){try{if(S.user)localStorage.setItem('satr_t_'+S.user,JSON.stringify({bal:T.bal,pos:T.pos,hist:T.hist,seq:T.seq}))}catch(e){}}
+function restoreT(){if(T.uid===S.user)return;T.uid=S.user;T.bal=10000;T.pos=[];T.hist=[];T.seq=0;
+ try{const d=JSON.parse(localStorage.getItem('satr_t_'+S.user)||'null');if(d&&typeof d.bal==='number'){T.bal=d.bal;T.pos=d.pos||[];T.hist=d.hist||[];T.seq=d.seq||0}}catch(e){}}
+function resetT(){if(!T.rc){T.rc=1;toast('اضغط مرة ثانية لإعادة ضبط الحساب التجريبي',false);setTimeout(()=>T.rc=0,3000);return}
+ T.rc=0;T.bal=10000;T.pos=[];T.hist=[];persistT();V.trade()}
+function selT(k){T.sel=k;document.querySelectorAll('.tb').forEach(b=>{const on=b.dataset.k===k;b.classList.toggle('on2',on);if(on)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})});loadK(MK[k],T.tf);drawTrade()}
+function setTF(k){T.tf=k;document.querySelectorAll('.tf').forEach(b=>b.classList.toggle('on2',b.dataset.k===k));loadK(MK[T.sel],k);drawTrade()}
+function setSide(v){T.side=v;document.querySelectorAll('.sd').forEach(b=>b.classList.toggle('on',+b.dataset.s===v));drawSum()}
+function qa(q){$('#ta').value=Math.max(1,Math.floor(T.bal*q/(1+(+$('#tlv').value||1)*FEE)));drawSum()}
+function openT(){const amt=+$('#ta').value,lev=+$('#tlv').value||1,del=+$('#tdl').value,dur=+$('#tdu').value,tp=+$('#ttp').value||0,sl=+$('#tsl').value||0;
+ if(!live(MK[T.sel]))return toast('لا يتوفر سعر حقيقي مباشر الآن، لا يمكن فتح صفقة',false);
+ if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);
+ if(sl>100||tp<0||sl<0)return toast('تحقق من قيم TP وSL (وقف الخسارة حتى 100٪)',false);
+ const fee0=amt*lev*FEE;if(amt+fee0>T.bal)return toast('الرصيد التجريبي لا يكفي (المبلغ + العمولة)',false);
+ T.bal-=amt+fee0;T.pos.push({id:++T.seq,a:T.sel,dir:T.side,amt,lev,tp,sl,fee0,st:'pending',openAt:Date.now()+del*1000,dur});
+ persistT();toast('تم تسجيل الصفقة');drawTrade()}
+function closeT(id,why,quiet){why=why||'manual';const x=T.pos.find(y=>y.id===id);if(!x)return;
+ if(x.st==='open'){const raw=why==='liq'?-x.amt:pnl(x),f1=why==='liq'?0:x.amt*x.lev*FEE,back=Math.max(0,x.amt+raw-f1);T.bal+=back;
+  T.hist.unshift({a:x.a,dir:x.dir,lev:x.lev,amt:x.amt,en:x.entry,ex:MK[x.a].p,pl:back-x.amt-x.fee0,why,at:new Date().toLocaleString('ar',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'})});
+  T.hist.length=Math.min(T.hist.length,50)}
+ else T.bal+=x.amt+x.fee0;
+ T.pos=T.pos.filter(y=>y!==x);persistT();if(!quiet)toast(x.st==='open'?'تم إغلاق الصفقة':'تم إلغاء الصفقة');drawTrade()}
+function closeAll(){T.pos.slice().forEach(x=>closeT(x.id,'manual',1));toast('تم إغلاق كل الصفقات')}
 function livePrices(){for(const m of Object.values(MK)){
  fetch('https://fapi.binance.com/fapi/v1/ticker/price?symbol='+m.s,{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{const p=+d.price;if(!(p>0))return;
-  if(!m.t){m.c=[];m.h=Array(60).fill(p);m.n=0;m.d=0}m.p=p;m.t=Date.now()}).catch(()=>{})}}
+  if(!m.t){m.h=[p];m.d=0;m.k={}}m.p=p;m.t=Date.now()}).catch(()=>{})}}
 function loadStats(){for(const m of Object.values(MK)){
  fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol='+m.s,{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{m.st={pc:+d.priceChangePercent,h:+d.highPrice,l:+d.lowPrice,v:+d.volume}}).catch(()=>{})}}
+function loadK(m,tf){fetch('https://fapi.binance.com/fapi/v1/klines?symbol='+m.s+'&interval='+tf+'&limit=50',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(a=>{m.k[tf]=a.map(c=>({t:c[0],o:+c[1],h:+c[2],l:+c[3],c:+c[4]}))}).catch(()=>{})}
 function tick(){const now=Date.now();
- Object.values(MK).forEach(m=>Date.now()-(m.t||0)<8000?push(m):step(m));
- for(const x of T.pos.slice()){
-  if(x.st==='pending'&&now>=x.openAt){if(T.bal<x.amt){T.pos=T.pos.filter(y=>y!==x);toast('أُلغيت صفقة مؤجلة: الرصيد التجريبي لا يكفي',false);continue}T.bal-=x.amt;x.st='open';x.entry=MK[x.a].p;if(x.dur)x.closeAt=now+x.dur*1000}
-  if(x.st==='open'&&pnl(x)<=-x.amt){closeT(x.id,true);toast('تمت تصفية الصفقة: بلغت الخسارة كامل المبلغ',false);continue}
-  if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
+ Object.values(MK).forEach(m=>live(m)?push(m):step(m));
+ const a0=MK[T.sel],ks=a0.k[T.tf];
+ if(ks&&ks.length&&live(a0)){const l=ks[ks.length-1],per=TF[T.tf][1]*1000;l.c=a0.p;l.h=Math.max(l.h,a0.p);l.l=Math.min(l.l,a0.p);if(now>=l.t+per)ks.push({t:l.t+per,o:a0.p,h:a0.p,l:a0.p,c:a0.p})}
+ for(const x of T.pos.slice()){const m=MK[x.a];if(!live(m))continue;
+  if(x.st==='pending'&&now>=x.openAt){x.st='open';x.entry=m.p;if(x.dur)x.closeAt=now+x.dur*1000;persistT()}
+  if(x.st!=='open')continue;
+  const p=pnl(x);
+  if(p<=-x.amt){closeT(x.id,'liq',1);toast('تمت تصفية صفقة '+m.n+': بلغت الخسارة كامل المبلغ',false);continue}
+  if(x.tp&&p>=x.amt*x.tp/100){closeT(x.id,'tp',1);toast('تحقق جني الأرباح في '+m.n+' ✔');continue}
+  if(x.sl&&p<=-x.amt*x.sl/100){closeT(x.id,'sl',1);toast('تفعّل وقف الخسارة في '+m.n,false);continue}
+  if(x.closeAt&&now>=x.closeAt)closeT(x.id,'timer',1)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
-function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=usd(T.bal);
- const a0=MK[T.sel],lv=Date.now()-(a0.t||0)<8000,st=a0.st,pc=st?st.pc:null;
+function drawSum(){const e=$('#tsum');if(!e)return;const amt=+$('#ta').value||0,lev=+$('#tlv').value||1,m=MK[T.sel],size=amt*lev,fee=size*FEE,liq=m.p*(1-T.side/lev);
+ e.innerHTML=`حجم الصفقة: <b>${usd(size)}</b> · العمولة (فتح): <b>${usd(fee)}</b><br>سعر الدخول التقريبي: <b dir="ltr">${usd(m.p)}</b> · سعر التصفية: <b dir="ltr">${usd(liq)}</b>`+(live(m)?'':'<br><b style="color:var(--bad)">⚠️ الصفقات متوقفة: لا يتوفر سعر حقيقي مباشر الآن.</b>')}
+function drawTrade(){const acc=$('#tacc');if(!acc)return;
+ const op=T.pos.filter(x=>x.st==='open'),upl=op.reduce((a,x)=>a+pnl(x),0),marg=T.pos.reduce((a,x)=>a+x.amt,0),real=T.hist.reduce((a,h)=>a+h.pl,0),w=T.hist.filter(h=>h.pl>0).length;
+ acc.innerHTML=[['الرصيد المتاح',usd(T.bal)],['قيمة الحساب',usd(T.bal+marg+upl)],['أرباح مفتوحة',(upl>=0?'+':'')+usd(upl),upl],['أرباح محققة',(real>=0?'+':'')+usd(real),real],['نسبة النجاح',T.hist.length?Math.round(w/T.hist.length*100)+'٪':'—'],['عدد الصفقات',T.hist.length]].map(([a,b,c])=>`<div><div class="muted">${a}</div><b dir="ltr" style="color:${c==null?'inherit':c>=0?'var(--ok)':'var(--bad)'}">${b}</b></div>`).join('');
+ for(const k in MK){const m=MK[k],e=$('#pp_'+k);if(e){const l=m.h;e.textContent=usd(m.p);e.style.color=l.length<2||l[l.length-1]>=l[l.length-2]?'var(--ok)':'var(--bad)'}}
+ const a0=MK[T.sel],lv=live(a0),st=a0.st,pc=st?st.pc:null;
  $('#tinfo').innerHTML=`<div class="task"><div><b style="font-size:18px">${a0.n}</b> <span class="muted" dir="ltr">${a0.s}</span><div class="stat" dir="ltr">${usd(a0.p)}</div></div><div>${lv?'<span class="tag t-ok">● سعر حقيقي مباشر</span>':'<span class="tag t-bad">○ محاكاة عشوائية</span>'}</div></div>
-<div class="grid" style="margin-top:8px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">${[['التغير 24 س',pc==null?'—':(pc>=0?'+':'')+f2(pc)+'%'],['أعلى 24 س',st?usd(st.h):'—'],['أدنى 24 س',st?usd(st.l):'—'],['الحجم 24 س',st?f2(st.v):'—']].map(([a,b])=>`<div><div class="muted">${a}</div><b dir="ltr" style="color:${a==='التغير 24 س'&&pc!=null?(pc>=0?'var(--ok)':'var(--bad)'):'inherit'}">${b}</b></div>`).join('')}</div>`;
- for(const k in MK){const m=MK[k],e=$('#pp_'+k);if(e){e.textContent=usd(m.p);e.style.color=m.h.at(-1)>=m.h.at(-2)?'var(--ok)':'var(--bad)'}}
- const cs=MK[T.sel].c,lo=Math.min(...cs.map(k=>k.l)),hi=Math.max(...cs.map(k=>k.h)),r=(hi-lo)||1,Y=v=>(114-(v-lo)/r*108).toFixed(1);
- $('#tch').innerHTML=cs.map((k,i)=>{const x=i*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
+<div class="grid" style="margin-top:8px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">${[['التغير 24 س',pc==null?'—':(pc>=0?'+':'')+f2(pc)+'٪'],['أعلى 24 س',st?usd(st.h):'—'],['أدنى 24 س',st?usd(st.l):'—'],['الحجم 24 س',st?f2(st.v):'—']].map(([a,b])=>`<div><div class="muted">${a}</div><b dir="ltr" style="color:${a==='التغير 24 س'&&pc!=null?(pc>=0?'var(--ok)':'var(--bad)'):'inherit'}">${b}</b></div>`).join('')}</div>`;
+ const kk=a0.k[T.tf],real2=lv&&kk&&kk.length,ks=real2?kk.slice(-40):tickCandles(a0),ops=T.pos.filter(x=>x.a===T.sel&&x.st==='open');
+ let lo=Math.min(a0.p,...ks.map(k=>k.l)),hi=Math.max(a0.p,...ks.map(k=>k.h));ops.forEach(x=>{lo=Math.min(lo,x.entry);hi=Math.max(hi,x.entry)});
+ const pd=(hi-lo)*.06||hi*.0005,L=lo-pd,H=hi+pd,R=H-L,Y=v=>(118-(v-L)/R*114).toFixed(1),n=ks.length;
+ const ln=(v,col,dash)=>v>L&&v<H?`<line x1="0" x2="300" y1="${Y(v)}" y2="${Y(v)}" style="stroke:${col}" stroke-width="1" ${dash?'stroke-dasharray="4 3"':''} vector-effect="non-scaling-stroke"/>`:'';
+ let g=ks.map((k,i)=>{const x=300-(n-i)*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
+ ops.forEach(x=>{g+=ln(x.entry,'#8fa3bf',1)+ln(roeP(x,-1),'#E67E22',1);if(x.tp)g+=ln(roeP(x,x.tp/100),'var(--ok)',1);if(x.sl)g+=ln(roeP(x,-x.sl/100),'var(--bad)',1)});
+ $('#tch').innerHTML=g+ln(a0.p,'var(--gold)',0);
+ $('#tcap').textContent=(real2?'شموع حقيقية '+TF[T.tf][0]:'شموع محاكاة 5 ث')+' · أعلى '+usd(Math.max(...ks.map(k=>k.h)))+' · أدنى '+usd(Math.min(...ks.map(k=>k.l)))+(ops.length?' · الخطوط المتقطعة: الدخول / TP / SL / التصفية':'');
+ drawSum();
  const sig=T.pos.map(x=>x.id+x.st).join();
- if(sig!==T.sig){T.sig=sig;$('#tpos').innerHTML=T.pos.map(x=>`<div class="card" style="margin-bottom:8px"><div class="task"><div><b>${MK[x.a].n}</b> · ${x.dir>0?'شراء':'بيع'} · ${usd(x.amt)} · ×${x.lev||1}<br><span id="pl_${x.id}"></span></div><button class="btn bad sm" onclick="closeT(${x.id})">${x.st==='pending'?'إلغاء':'إغلاق'}</button></div></div>`).join('')||'<p class="muted">لا صفقات مفتوحة.</p>'}
- T.pos.forEach(x=>{const e=$('#pl_'+x.id);if(!e)return;
-  if(x.st==='open'){const pl=pnl(x);e.textContent=(pl>=0?'+':'')+usd(pl)+' ('+(pl>=0?'+':'')+(pl/x.amt*100).toFixed(2)+'%)'+(x.closeAt?' · تُغلق بعد '+Math.max(0,Math.ceil((x.closeAt-Date.now())/1000))+' ث':'');e.style.color=pl>=0?'var(--ok)':'var(--bad)'}
-  else e.textContent='تُفتح بعد '+Math.max(0,Math.ceil((x.openAt-Date.now())/1000))+' ث'});
- if(T.hsig!==T.hist.length){T.hsig=T.hist.length;$('#thist').innerHTML=T.hist.length?'<div class="card scroll"><table>'+T.hist.map(x=>`<tr><td>${x.at}</td><td>${MK[x.a].n}</td><td>${x.dir>0?'شراء':'بيع'}</td><td style="color:${x.pl>=0?'var(--ok)':'var(--bad)'}">${x.pl>=0?'+':''}${usd(x.pl)}</td></tr>`).join('')+'</table></div>':'<p class="muted">لا صفقات مغلقة بعد.</p>'}}
+ if(sig!==T.sig){T.sig=sig;$('#tpos').innerHTML=T.pos.map(x=>`<div class="card" style="margin-bottom:8px;border-inline-start:4px solid ${x.dir>0?'var(--ok)':'var(--bad)'}"><div class="task"><div><b>${MK[x.a].n}</b> <span class="tag ${x.dir>0?'t-ok':'t-bad'}">${x.dir>0?'شراء':'بيع'} ×${x.lev||1}</span> <span class="tag t-w">${x.st==='pending'?'مؤجلة':'مفتوحة'}</span> <span class="muted">${usd(x.amt)}</span><div class="muted" id="pi_${x.id}"></div><div id="pl_${x.id}" style="font-weight:700"></div></div><button class="btn bad sm" onclick="closeT(${x.id})">${x.st==='pending'?'إلغاء':'إغلاق'}</button></div></div>`).join('')||'<p class="muted">لا صفقات مفتوحة.</p>';$('#tca').hidden=T.pos.length<2}
+ T.pos.forEach(x=>{const m=MK[x.a],pi=$('#pi_'+x.id),pl=$('#pl_'+x.id);if(!pi)return;
+  if(x.st==='open'){const p=pnl(x);pi.innerHTML=`الدخول <b dir="ltr">${usd(x.entry)}</b> · الحالي <b dir="ltr">${usd(m.p)}</b> · التصفية <b dir="ltr">${usd(roeP(x,-1))}</b>${x.tp?' · TP '+x.tp+'٪':''}${x.sl?' · SL '+x.sl+'٪':''}${x.closeAt?' · تُغلق بعد '+Math.max(0,Math.ceil((x.closeAt-Date.now())/1000))+' ث':''}`;pl.textContent=(p>=0?'+':'')+usd(p)+' ('+(p>=0?'+':'')+(p/x.amt*100).toFixed(2)+'٪)';pl.style.color=p>=0?'var(--ok)':'var(--bad)'}
+  else{pi.textContent='تُفتح بعد '+Math.max(0,Math.ceil((x.openAt-Date.now())/1000))+' ث';pl.textContent=''}});
+ const hs=T.hist.length+(T.hist[0]?T.hist[0].at+T.hist[0].pl:'');
+ if(T.hsig!==hs){T.hsig=hs;$('#thist').innerHTML=T.hist.length?'<div class="card scroll"><table><tr><th>الوقت</th><th>الأصل</th><th>النوع</th><th>الدخول ← الخروج</th><th>النتيجة</th><th>السبب</th></tr>'+T.hist.map(h=>`<tr><td>${h.at}</td><td>${MK[h.a]?MK[h.a].n:h.a}</td><td>${h.dir>0?'شراء':'بيع'} ×${h.lev||1}</td><td dir="ltr">${usd(h.en||0)} → ${usd(h.ex||0)}</td><td dir="ltr" style="color:${h.pl>=0?'var(--ok)':'var(--bad)'}">${h.pl>=0?'+':''}${usd(h.pl)}</td><td>${WHY[h.why]||'—'}</td></tr>`).join('')+'</table></div>':'<p class="muted">لا صفقات مغلقة بعد.</p>'}}
 setInterval(tick,1000);livePrices();setInterval(livePrices,2000);loadStats();setInterval(loadStats,20000);
+setInterval(()=>{if((location.hash||'').slice(1)==='trade')loadK(MK[T.sel],T.tf)},20000);
 addEventListener('hashchange',render);
 /* ===== حفظ البيانات في JSONBin (للتجربة فقط) ===== */
 /* بيانات JSONBin للتجربة فقط: لا ترفع هذا الملف في مستودع عام ولا تشاركه */
