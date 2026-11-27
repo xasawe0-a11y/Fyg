@@ -176,14 +176,23 @@ withdraw(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><form cl
 history(){const u=me();$('#app').innerHTML=`<div class="wrap"><section><h2>سجل العمليات</h2><div class="card scroll"><table><tr><th>التاريخ</th><th>العملية</th><th>المبلغ</th></tr>${S.log.filter(l=>l.u===u.id).reverse().map(l=>`<tr><td>${l.d}</td><td>${l.k}</td><td style="color:${l.a<0?'var(--bad)':'var(--ok)'}">${fmt(l.a)}</td></tr>`).join('')||'<tr><td colspan=3>لا عمليات بعد. أنجز مهمتك الأولى.</td></tr>'}</table></div></section></div>`},
 trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجريبي</h2>
 <div class="card"><div class="muted">الرصيد المتاح في المحفظة (ليرة سورية)</div><div class="stat" id="tbal"></div><div class="muted">جميع الأسعار والمبالغ بالليرة السورية · أسعار محاكاة وليست أسعار سوق حقيقية</div></div>
-<div class="grid" style="margin:16px 0">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')"><span class="market-name">${m.n}</span><br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div>
+<div class="card" style="margin:16px 0">
+<label for="marketSelect">اختر الأصل الذي تريد التداول عليه</label>
+<select id="marketSelect" onchange="selT(this.value)">
+<option value="gold">ذهب 🥇</option>
+<option value="btc">بتكوين ₿</option>
+<option value="oil">نفط 🛢️</option>
+<option value="stk">سهم عشوائي من شركات عالمية 📈</option>
+</select>
+<div style="margin-top:12px"><div class="muted">السعر الحالي</div><div class="stat" id="selectedPrice" dir="ltr"></div><div class="muted" id="selectedName"></div></div>
+</div>
 <div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
 <label>مبلغ الصفقة (ل.س)</label><input id="ta" type="number" min="1" value="100000">
 <label>وقت فتح الصفقة</label><select id="tdl"><option value="0">الآن</option><option value="15">بعد 15 ثانية</option><option value="60">بعد دقيقة</option></select>
 <label>مدة الصفقة</label><select id="tdu"><option value="10">10 ثوانٍ</option><option value="30">30 ثانية</option><option value="60">دقيقة واحدة</option><option value="120">دقيقتان</option><option value="180">3 دقائق</option><option value="240">4 دقائق</option><option value="300">5 دقائق</option></select><div class="note">تُغلق الصفقة تلقائياً عند انتهاء المدة المحددة.</div>
 <p><button class="btn" style="width:100%" onclick="openT()">فتح الصفقة</button></p></div>
-<h2 style="margin-top:24px">الصفقات</h2><div id="tpos"></div><h2 style="margin-top:24px">السجل</h2><div id="thist"></div></section></div>`;T.sig=T.hsig=null;drawTrade()},
+<h2 style="margin-top:24px">الصفقات</h2><div id="tpos"></div><h2 style="margin-top:24px">السجل</h2><div id="thist"></div></section></div>`;T.sig=T.hsig=null;const ms=$('#marketSelect');if(ms)ms.value=T.sel;drawTrade()},
 support(){const u=me(),th=S.msgs.filter(m=>m.u===u.id),fresh=new Set(th.filter(m=>m.from==='admin'&&!m.read).map(m=>m.id));
 if(fresh.size){th.forEach(m=>{if(fresh.has(m.id))m.read=true});save();drawNav()}
 $('#app').innerHTML=`<div class="wrap"><section><div class="card form" style="max-width:520px"><h2>مراسلة الدعم</h2>
@@ -287,10 +296,10 @@ function step(m){
  else{const k=m.c.at(-1);k.c=m.p;k.h=Math.max(k.h,m.p);k.l=Math.min(k.l,m.p)}
 }
 Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
-const T={pos:[],hist:[],sel:'gold',seq:0};
-const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
+const stockChoices=['آبل','مايكروسوفت','إنفيديا','أمازون','تسلا','كوكاكولا','ميتا'];MK.stk.n='سهم '+stockChoices[Math.floor(Math.random()*stockChoices.length)]+' (عشوائي) 📈';const T={pos:[],hist:[],sel:'gold',seq:0};
+const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:0,minimumFractionDigits:0});
 const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
-function selT(k){T.sel=k;document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on2',b.dataset.k===k));drawTrade()}
+function selT(k){if(!MK[k])return;T.sel=k;const select=$('#marketSelect');if(select)select.value=k;drawTrade()}
 function openT(){const u=me(),amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value||10;
  if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);
  if(amt>u.bal)return toast('الرصيد المتاح في المحفظة لا يكفي',false);
@@ -317,7 +326,7 @@ function tick(){const now=Date.now();
   if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
 function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(me().bal)+' ل.س';
- for(const k in MK){const m=MK[k],e=$('#pp_'+k);if(e){e.textContent=f2(m.p)+' ل.س';e.style.color=m.h.at(-1)>=m.h.at(-2)?'var(--ok)':'var(--bad)'}}
+ const chosen=MK[T.sel],priceEl=$('#selectedPrice'),nameEl=$('#selectedName');if(priceEl){priceEl.textContent=f2(chosen.p)+' ل.س';priceEl.style.color=chosen.h.at(-1)>=chosen.h.at(-2)?'var(--ok)':'var(--bad)'}if(nameEl)nameEl.textContent=chosen.n;
  const cs=MK[T.sel].c,lo=Math.min(...cs.map(k=>k.l)),hi=Math.max(...cs.map(k=>k.h)),r=(hi-lo)||1,Y=v=>(114-(v-lo)/r*108).toFixed(1);
  $('#tch').innerHTML=cs.map((k,i)=>{const x=i*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
  const sig=T.pos.map(x=>x.id+x.st).join();
