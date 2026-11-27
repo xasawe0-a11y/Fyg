@@ -188,7 +188,7 @@ trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجري�
 </div>
 <div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
-<label>مبلغ الصفقة (ل.س)</label><input id="ta" type="number" min="1" value="100000">
+<label>مبلغ الصفقة (ل.س) — يقبل أجزاء الليرة</label><input id="ta" type="number" min="0.01" step="0.01" value="100000">
 <label>وقت فتح الصفقة</label><select id="tdl"><option value="0">الآن</option><option value="15">بعد 15 ثانية</option><option value="60">بعد دقيقة</option></select>
 <label>مدة الصفقة</label><select id="tdu"><option value="10">10 ثوانٍ</option><option value="30">30 ثانية</option><option value="60">دقيقة واحدة</option><option value="120">دقيقتان</option><option value="180">3 دقائق</option><option value="240">4 دقائق</option><option value="300">5 دقائق</option></select><div class="note">تُغلق الصفقة تلقائياً عند انتهاء المدة المحددة.</div>
 <p><button class="btn" style="width:100%" onclick="openT()">فتح الصفقة</button></p></div>
@@ -350,12 +350,12 @@ setInterval(loadFx,15*60*1000);
 
 Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
 const stockChoices=['آبل','مايكروسوفت','إنفيديا','أمازون','تسلا','كوكاكولا','ميتا'];MK.stk.n='سهم '+stockChoices[Math.floor(Math.random()*stockChoices.length)]+' (عشوائي) 📈';const T={pos:[],hist:[],sel:'gold',seq:0};
-const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:0,minimumFractionDigits:0});
+const f2=n=>{const v=Number(n)||0;return v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2,useGrouping:true})};
 const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
 function selT(k){if(!MK[k])return;T.sel=k;const select=$('#marketSelect');if(select)select.value=k;drawTrade()}
 function openT(){const u=me(),amt=+$('#ta').value,dir=+$('#td').value,del=+$('#tdl').value,dur=+$('#tdu').value||10;
  if(!MK[T.sel].live)return toast('سعر هذا الأصل غير متصل بمصدر مباشر حالياً؛ لم يتم فتح الصفقة',false);
- if(!(amt>0))return toast('أدخل مبلغاً صحيحاً',false);
+ if(!(Number.isFinite(amt)&&amt>=0.01))return toast('أدخل مبلغاً صحيحاً لا يقل عن 0.01 ليرة',false);
  if(amt>u.bal)return toast('الرصيد المتاح في المحفظة لا يكفي',false);
  u.bal-=amt;
  S.log.push({u:u.id,d:today(),k:'حجز صفقة تداول',a:-amt});
