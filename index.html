@@ -178,7 +178,7 @@ trade(){$('#app').innerHTML=`<div class="wrap"><section><h2>تداول تجري�
 <div class="note">⚠️ هذه محاكاة تعليمية: الأسعار عشوائية وليست أسعار السوق الحقيقية، والرصيد التجريبي منفصل تماماً عن محفظتك، لا يُسحب ولا يؤثر على رصيدك الحقيقي.</div>
 <div class="card"><div class="muted">الرصيد التجريبي</div><div class="stat" id="tbal"></div><button class="btn alt sm" onclick="T.bal=10000;T.pos=[];T.hist=[];V.trade()">إعادة ضبط</button></div>
 <div class="grid" style="margin:16px 0">${Object.entries(MK).map(([k,m])=>`<button class="btn alt tb ${k===T.sel?'on2':''}" data-k="${k}" onclick="selT('${k}')">${m.n}<br><span id="pp_${k}" dir="ltr"></span></button>`).join('')}</div>
-<div class="card"><svg id="tch" viewBox="0 0 295 100" preserveAspectRatio="none" style="width:100%;height:140px;color:var(--gold)"></svg>
+<div class="card"><svg id="tch" viewBox="0 0 300 120" preserveAspectRatio="none" style="width:100%;height:200px"></svg><div class="muted">كل شمعة = 5 ثوانٍ · أخضر صاعد، أحمر هابط</div>
 <label>الاتجاه</label><select id="td"><option value="1">شراء (أتوقع الصعود)</option><option value="-1">بيع (أتوقع النزول)</option></select>
 <label>المبلغ</label><input id="ta" type="number" min="1" value="1000">
 <label>وقت فتح الصفقة</label><select id="tdl"><option value="0">الآن</option><option value="15">بعد 15 ثانية</option><option value="60">بعد دقيقة</option></select>
@@ -276,7 +276,11 @@ async function delThread(uid){uid=S.admin?uid:'me';if(window.DT2!==uid){window.D
  const id=S.admin?uid:S.user;S.msgs=S.msgs.filter(m=>m.u!==id);
  toast('تم حذف المحادثة من الطرفين');drawNav();S.admin?V.admin():V.support()}
 const MK={gold:{n:'ذهب 🥇',p:2650,v:.004},oil:{n:'نفط 🛢️',p:75,v:.006},btc:{n:'بتكوين ₿',p:95000,v:.009},stk:{n:'سهم تجريبي 📈',p:120,v:.012}};
-Object.values(MK).forEach(m=>{m.h=Array(60).fill(m.p);m.d=0});
+Object.values(MK).forEach(m=>{m.h=Array(60).fill(m.p);m.d=0;m.c=[];m.n=0});
+function step(m){m.d=m.d*.8+(Math.random()-.5)*m.v;m.p=Math.max(.01,m.p*(1+m.d+(Math.random()-.5)*m.v));m.h.push(m.p);if(m.h.length>60)m.h.shift();
+ m.n++;if(!m.c.length||m.n%5===1){const pv=m.c.length?m.c.at(-1).c:m.p;m.c.push({o:pv,h:Math.max(pv,m.p),l:Math.min(pv,m.p),c:m.p});if(m.c.length>40)m.c.shift()}
+ else{const k=m.c.at(-1);k.c=m.p;k.h=Math.max(k.h,m.p);k.l=Math.min(k.l,m.p)}}
+Object.values(MK).forEach(m=>{for(let i=0;i<200;i++)step(m)});
 const T={bal:10000,pos:[],hist:[],sel:'gold',seq:0};
 const f2=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const pnl=x=>x.amt*x.dir*(MK[x.a].p-x.entry)/x.entry;
@@ -288,15 +292,15 @@ function closeT(id,auto){const x=T.pos.find(y=>y.id===id);if(!x)return;
  if(x.st==='open'){const pl=pnl(x);T.bal+=Math.max(0,x.amt+pl);T.hist.unshift({a:x.a,dir:x.dir,amt:x.amt,pl,at:new Date().toLocaleTimeString('ar')});T.hist.length=Math.min(T.hist.length,20)}
  T.pos=T.pos.filter(y=>y!==x);if(!auto)toast('تم إنهاء الصفقة');drawTrade()}
 function tick(){const now=Date.now();
- for(const m of Object.values(MK)){m.d=m.d*.8+(Math.random()-.5)*m.v;m.p=Math.max(.01,m.p*(1+m.d+(Math.random()-.5)*m.v));m.h.push(m.p);if(m.h.length>60)m.h.shift()}
+ Object.values(MK).forEach(step);
  for(const x of T.pos.slice()){
   if(x.st==='pending'&&now>=x.openAt){if(T.bal<x.amt){T.pos=T.pos.filter(y=>y!==x);toast('أُلغيت صفقة مؤجلة: الرصيد التجريبي لا يكفي',false);continue}T.bal-=x.amt;x.st='open';x.entry=MK[x.a].p;if(x.dur)x.closeAt=now+x.dur*1000}
   if(x.st==='open'&&x.closeAt&&now>=x.closeAt)closeT(x.id,true)}
  if((location.hash||'').slice(1)==='trade'&&me())drawTrade()}
 function drawTrade(){if(!$('#tbal'))return;$('#tbal').textContent=f2(T.bal);
  for(const k in MK){const m=MK[k],e=$('#pp_'+k);if(e){e.textContent=f2(m.p);e.style.color=m.h.at(-1)>=m.h.at(-2)?'var(--ok)':'var(--bad)'}}
- const h=MK[T.sel].h,mn=Math.min(...h),r=(Math.max(...h)-mn)||1;
- $('#tch').innerHTML='<polyline fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" points="'+h.map((v,i)=>(i*5)+','+(96-(v-mn)/r*90).toFixed(1)).join(' ')+'"/>';
+ const cs=MK[T.sel].c,lo=Math.min(...cs.map(k=>k.l)),hi=Math.max(...cs.map(k=>k.h)),r=(hi-lo)||1,Y=v=>(114-(v-lo)/r*108).toFixed(1);
+ $('#tch').innerHTML=cs.map((k,i)=>{const x=i*7.5+3.75,col=k.c>=k.o?'var(--ok)':'var(--bad)',t=+Y(Math.max(k.o,k.c)),b=+Y(Math.min(k.o,k.c));return `<line x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}" style="stroke:${col}" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${x-2.5}" y="${t}" width="5" height="${Math.max(1,b-t).toFixed(1)}" style="fill:${col}"/>`}).join('');
  const sig=T.pos.map(x=>x.id+x.st).join();
  if(sig!==T.sig){T.sig=sig;$('#tpos').innerHTML=T.pos.map(x=>`<div class="card" style="margin-bottom:8px"><div class="task"><div><b>${MK[x.a].n}</b> · ${x.dir>0?'شراء':'بيع'} · ${f2(x.amt)}<br><span id="pl_${x.id}"></span></div><button class="btn bad sm" onclick="closeT(${x.id})">${x.st==='pending'?'إلغاء':'إغلاق'}</button></div></div>`).join('')||'<p class="muted">لا صفقات مفتوحة.</p>'}
  T.pos.forEach(x=>{const e=$('#pl_'+x.id);if(!e)return;
